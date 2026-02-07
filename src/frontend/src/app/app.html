@@ -11,8 +11,14 @@
         (input)="url.set($any($event.target).value)"
         (keydown.enter)="onAnalyze()"
       />
-      <button (click)="onAnalyze()">Analyze</button>
+      <button (click)="onAnalyze()" [disabled]="isLoading()">
+        {{ isLoading() ? 'Saving...' : 'Analyze' }}
+      </button>
     </div>
+
+    @if (message()) {
+      <p class="message">{{ message() }}</p>
+    }
   </div>
 </main>
 

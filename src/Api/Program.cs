@@ -32,6 +32,13 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// Apply pending migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -48,4 +55,40 @@ app.MapGet("/api/health", () => new
     Application = "WcagAnalyzer API"
 });
 
+// Analysis endpoints
+app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepository repo) =>
+{
+    var analysis = new WcagAnalyzer.Domain.Entities.AnalysisRequest
+    {
+        Id = Guid.NewGuid(),
+        Url = request.Url,
+        Status = WcagAnalyzer.Domain.Enums.AnalysisStatus.Pending,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    await repo.AddAsync(analysis);
+
+    return Results.Created($"/api/analysis/{analysis.Id}", new
+    {
+        analysis.Id,
+        analysis.Url,
+        Status = analysis.Status.ToString(),
+        analysis.CreatedAt
+    });
+});
+
+app.MapGet("/api/analysis", async (IAnalysisRepository repo) =>
+{
+    var all = await repo.GetAllAsync();
+    return all.Select(a => new
+    {
+        a.Id,
+        a.Url,
+        Status = a.Status.ToString(),
+        a.CreatedAt
+    });
+});
+
 app.Run();
+
+record AnalysisCreateRequest(string Url);
