@@ -1,0 +1,6 @@
+@WcagAnalyzer.Api_HostAddress = http://localhost:5042
+
+GET {{WcagAnalyzer.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
