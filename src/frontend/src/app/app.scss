@@ -76,4 +76,9 @@ h1 {
   color: #2e7d32;
   border-radius: 8px;
   font-size: 0.95rem;
+
+  &.error {
+    background: #fce4ec;
+    color: #c62828;
+  }
 }
