@@ -92,3 +92,5 @@ app.MapGet("/api/analysis", async (IAnalysisRepository repo) =>
 app.Run();
 
 record AnalysisCreateRequest(string Url);
+
+public partial class Program { }
