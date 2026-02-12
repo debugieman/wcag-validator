@@ -120,7 +120,20 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
 
         var items = content.EnumerateArray().ToList();
         items.Should().Contain(item =>
-            item.GetProperty("url").GetString() == "https://test-site.com"
-            && item.GetProperty("status").GetString() == "Pending");
+            item.GetProperty("url").GetString() == "https://test-site.com");
+    }
+
+    [Fact]
+    public async Task PostAnalysis_ShouldEnqueueForProcessing()
+    {
+        var payload = new { url = "https://enqueue-test.com" };
+
+        var response = await _client.PostAsJsonAsync("/api/analysis", payload);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("status").GetString().Should().Be("Pending");
+        content.GetProperty("id").GetString().Should().NotBeNullOrEmpty();
     }
 }

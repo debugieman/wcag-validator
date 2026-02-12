@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WcagAnalyzer.Domain.Entities;
+using WcagAnalyzer.Domain.Enums;
 using WcagAnalyzer.Domain.Repositories;
 using WcagAnalyzer.Infrastructure.Data;
 
@@ -28,6 +29,14 @@ public class AnalysisRepository : IAnalysisRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<AnalysisRequest>> GetByStatusAsync(AnalysisStatus status)
+    {
+        return await _context.AnalysisRequests
+            .Include(r => r.Results)
+            .Where(r => r.Status == status)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(AnalysisRequest request)
     {
         await _context.AnalysisRequests.AddAsync(request);
@@ -36,7 +45,10 @@ public class AnalysisRepository : IAnalysisRepository
 
     public async Task UpdateAsync(AnalysisRequest request)
     {
-        _context.AnalysisRequests.Update(request);
+        var entry = _context.Entry(request);
+        if (entry.State == EntityState.Detached)
+            _context.AnalysisRequests.Update(request);
+
         await _context.SaveChangesAsync();
     }
 }

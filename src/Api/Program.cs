@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using WcagAnalyzer.Application.Services;
 using WcagAnalyzer.Domain.Repositories;
 using WcagAnalyzer.Infrastructure.Data;
 using WcagAnalyzer.Infrastructure.Repositories;
+using WcagAnalyzer.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +13,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Repositories
 builder.Services.AddScoped<IAnalysisRepository, AnalysisRepository>();
+
+// Background processing
+builder.Services.AddSingleton<IAnalysisQueue, AnalysisQueue>();
+builder.Services.AddScoped<IAnalysisProcessor, AnalysisProcessor>();
+builder.Services.AddHostedService<AnalysisBackgroundService>();
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
@@ -56,7 +63,7 @@ app.MapGet("/api/health", () => new
 });
 
 // Analysis endpoints
-app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepository repo) =>
+app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepository repo, IAnalysisQueue queue) =>
 {
     var analysis = new WcagAnalyzer.Domain.Entities.AnalysisRequest
     {
@@ -67,6 +74,7 @@ app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepo
     };
 
     await repo.AddAsync(analysis);
+    await queue.EnqueueAsync(analysis.Id);
 
     return Results.Created($"/api/analysis/{analysis.Id}", new
     {
