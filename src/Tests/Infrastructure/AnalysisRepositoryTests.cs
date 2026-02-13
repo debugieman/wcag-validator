@@ -138,6 +138,90 @@ public class AnalysisRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task GetByStatusAsync_ShouldReturnOnlyMatchingStatus()
+    {
+        var pending = new AnalysisRequest
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://pending.com",
+            Status = AnalysisStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+        var completed = new AnalysisRequest
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://completed.com",
+            Status = AnalysisStatus.Completed,
+            CreatedAt = DateTime.UtcNow
+        };
+        var failed = new AnalysisRequest
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://failed.com",
+            Status = AnalysisStatus.Failed,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _context.AnalysisRequests.AddRangeAsync(pending, completed, failed);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.GetByStatusAsync(AnalysisStatus.Pending);
+
+        result.Should().HaveCount(1);
+        result.First().Url.Should().Be("https://pending.com");
+    }
+
+    [Fact]
+    public async Task GetByStatusAsync_NoMatches_ShouldReturnEmptyList()
+    {
+        var request = new AnalysisRequest
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com",
+            Status = AnalysisStatus.Completed,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _context.AnalysisRequests.AddAsync(request);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.GetByStatusAsync(AnalysisStatus.Pending);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetByStatusAsync_ShouldIncludeResults()
+    {
+        var requestId = Guid.NewGuid();
+        var request = new AnalysisRequest
+        {
+            Id = requestId,
+            Url = "https://example.com",
+            Status = AnalysisStatus.Completed,
+            CreatedAt = DateTime.UtcNow,
+            Results = new List<AnalysisResult>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    AnalysisRequestId = requestId,
+                    RuleId = "image-alt",
+                    Impact = "critical",
+                    Description = "Images must have alternate text"
+                }
+            }
+        };
+        await _context.AnalysisRequests.AddAsync(request);
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+
+        var result = await _repository.GetByStatusAsync(AnalysisStatus.Completed);
+
+        result.Should().HaveCount(1);
+        result.First().Results.Should().HaveCount(1);
+        result.First().Results.First().RuleId.Should().Be("image-alt");
+    }
+
+    [Fact]
     public async Task GetByIdAsync_ShouldIncludeResults()
     {
         var requestId = Guid.NewGuid();

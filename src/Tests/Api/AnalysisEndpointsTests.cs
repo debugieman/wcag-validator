@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
+using WcagAnalyzer.Application.Models;
+using WcagAnalyzer.Application.Services;
 using WcagAnalyzer.Infrastructure.Data;
 
 namespace WcagAnalyzer.Tests.Api;
@@ -36,6 +39,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite(_connection));
+
+            // Replace Playwright analyzer with a mock for integration tests
+            var analyzerDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IAccessibilityAnalyzer));
+            if (analyzerDescriptor != null)
+                services.Remove(analyzerDescriptor);
+
+            var mockAnalyzer = new Mock<IAccessibilityAnalyzer>();
+            mockAnalyzer.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<AccessibilityViolation>());
+            services.AddScoped<IAccessibilityAnalyzer>(_ => mockAnalyzer.Object);
         });
     }
 
