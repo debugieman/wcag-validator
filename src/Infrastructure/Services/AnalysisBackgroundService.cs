@@ -40,6 +40,7 @@ public class AnalysisBackgroundService : BackgroundService
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
+                // notification misssing 
                 break;
             }
             catch (Exception ex)
