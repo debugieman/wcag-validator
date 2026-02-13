@@ -16,6 +16,8 @@ builder.Services.AddScoped<IAnalysisRepository, AnalysisRepository>();
 
 // Background processing
 builder.Services.AddSingleton<IAnalysisQueue, AnalysisQueue>();
+builder.Services.AddSingleton<PlaywrightBrowserManager>();
+builder.Services.AddScoped<IAccessibilityAnalyzer, PlaywrightAccessibilityAnalyzer>();
 builder.Services.AddScoped<IAnalysisProcessor, AnalysisProcessor>();
 builder.Services.AddHostedService<AnalysisBackgroundService>();
 

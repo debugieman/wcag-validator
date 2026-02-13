@@ -7,10 +7,12 @@ namespace WcagAnalyzer.Application.Services;
 public class AnalysisProcessor : IAnalysisProcessor
 {
     private readonly IAnalysisRepository _repository;
+    private readonly IAccessibilityAnalyzer _analyzer;
 
-    public AnalysisProcessor(IAnalysisRepository repository)
+    public AnalysisProcessor(IAnalysisRepository repository, IAccessibilityAnalyzer analyzer)
     {
         _repository = repository;
+        _analyzer = analyzer;
     }
 
     public async Task ProcessAsync(Guid analysisId, CancellationToken cancellationToken)
@@ -24,16 +26,20 @@ public class AnalysisProcessor : IAnalysisProcessor
 
         try
         {
-            // Stub: simulate processing work
-            await Task.Delay(2000, cancellationToken);
+            var violations = await _analyzer.AnalyzeAsync(request.Url, cancellationToken);
 
-            request.Results.Add(new AnalysisResult
+            foreach (var violation in violations)
             {
-                AnalysisRequestId = analysisId,
-                RuleId = "color-contrast",
-                Impact = "serious",
-                Description = "Elements must have sufficient color contrast"
-            });
+                request.Results.Add(new AnalysisResult
+                {
+                    AnalysisRequestId = analysisId,
+                    RuleId = violation.RuleId,
+                    Impact = violation.Impact,
+                    Description = violation.Description,
+                    HelpUrl = violation.HelpUrl,
+                    HtmlElement = violation.HtmlElement
+                });
+            }
 
             request.Status = AnalysisStatus.Completed;
             request.CompletedAt = DateTime.UtcNow;
