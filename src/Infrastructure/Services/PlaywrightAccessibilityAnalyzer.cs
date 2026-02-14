@@ -45,7 +45,7 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         }
     }
 
-    private static List<AccessibilityViolation> ParseViolations(JsonElement results)
+    internal static List<AccessibilityViolation> ParseViolations(JsonElement results)
     {
         var violations = new List<AccessibilityViolation>();
 
