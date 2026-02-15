@@ -87,6 +87,31 @@ app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepo
     });
 });
 
+app.MapGet("/api/analysis/{id:guid}", async (Guid id, IAnalysisRepository repo) =>
+{
+    var analysis = await repo.GetByIdAsync(id);
+    if (analysis is null)
+        return Results.NotFound(new { Message = "Analysis not found" });
+
+    return Results.Ok(new
+    {
+        analysis.Id,
+        analysis.Url,
+        Status = analysis.Status.ToString(),
+        analysis.CreatedAt,
+        analysis.CompletedAt,
+        analysis.ErrorMessage,
+        Results = analysis.Results.Select(r => new
+        {
+            r.RuleId,
+            r.Impact,
+            r.Description,
+            r.HtmlElement,
+            r.HelpUrl
+        })
+    });
+});
+
 app.MapGet("/api/analysis", async (IAnalysisRepository repo) =>
 {
     var all = await repo.GetAllAsync();

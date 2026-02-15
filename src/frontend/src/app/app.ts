@@ -41,7 +41,7 @@ export class App {
     this.isLoading.set(true);
     this.message.set('');
 
-    this.http.post<any>('http://localhost:5042/api/analysis', { url: value })
+    this.http.post<any>('https://localhost:7268/api/analysis', { url: value })
       .subscribe({
         next: (res) => {
           this.messageType.set('success');
