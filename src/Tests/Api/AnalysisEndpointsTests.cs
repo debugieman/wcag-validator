@@ -149,4 +149,45 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         content.GetProperty("status").GetString().Should().Be("Pending");
         content.GetProperty("id").GetString().Should().NotBeNullOrEmpty();
     }
+
+    [Fact]
+    public async Task GetAnalysisById_ExistingId_ShouldReturn200WithDetails()
+    {
+        var payload = new { url = "https://details-test.com" };
+        var postResponse = await _client.PostAsJsonAsync("/api/analysis", payload);
+        var postContent = await postResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = postContent.GetProperty("id").GetString();
+
+        var response = await _client.GetAsync($"/api/analysis/{id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("id").GetString().Should().Be(id);
+        content.GetProperty("url").GetString().Should().Be("https://details-test.com");
+        content.GetProperty("status").GetString().Should().Be("Pending");
+        content.TryGetProperty("results", out var results).Should().BeTrue();
+        results.GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetAnalysisById_NonExistingId_ShouldReturn404()
+    {
+        var fakeId = Guid.NewGuid();
+
+        var response = await _client.GetAsync($"/api/analysis/{fakeId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("message").GetString().Should().Be("Analysis not found");
+    }
+
+    [Fact]
+    public async Task GetAnalysisById_InvalidGuid_ShouldReturn404()
+    {
+        var response = await _client.GetAsync("/api/analysis/not-a-guid");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }
