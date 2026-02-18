@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Build output
+dist/
+.angular/
+bin/
+obj/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Version control
+.git/
+.gitignore
+
+# IDE / Editor
+.vscode/
+.idea/
+.vs/
+*.swp
+*.swo
+*.user
+*.suo
+
+# Tests (exclude code but keep .csproj for dotnet restore)
+src/Tests/**
+!src/Tests/WcagAnalyzer.Tests.csproj
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+coverage/
+.claude/

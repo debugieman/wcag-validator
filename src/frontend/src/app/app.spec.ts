@@ -126,7 +126,7 @@ describe('App', () => {
       expect(app.isLoading()).toBe(true);
       expect(app.message()).toBe('');
 
-      const req = httpTesting.expectOne('http://localhost:5042/api/analysis');
+      const req = httpTesting.expectOne('/api/analysis');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ url: 'https://example.com' });
 
@@ -145,7 +145,7 @@ describe('App', () => {
 
       app.onAnalyze();
 
-      const req = httpTesting.expectOne('http://localhost:5042/api/analysis');
+      const req = httpTesting.expectOne('/api/analysis');
       req.error(new ProgressEvent('error'));
 
       expect(app.isLoading()).toBe(false);
@@ -167,7 +167,7 @@ describe('App', () => {
       expect(button.disabled).toBe(true);
       expect(button.textContent?.trim()).toBe('Saving...');
 
-      const req = httpTesting.expectOne('http://localhost:5042/api/analysis');
+      const req = httpTesting.expectOne('/api/analysis');
       req.flush({ id: 'test-id' });
 
       fixture.detectChanges();
@@ -186,7 +186,7 @@ describe('App', () => {
       app.url.set('https://example.com');
 
       app.onAnalyze();
-      const req = httpTesting.expectOne('http://localhost:5042/api/analysis');
+      const req = httpTesting.expectOne('/api/analysis');
       req.flush({ id: 'abc-123' });
 
       fixture.detectChanges();
