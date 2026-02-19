@@ -19,7 +19,7 @@ public class HttpClientApiTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task PostAnalysis_WithManualHttpRequestMessage_ShouldReturn201()
     {
-        var json = JsonSerializer.Serialize(new { url = "https://httpclient-test.com" });
+        var json = JsonSerializer.Serialize(new { url = "https://httpclient-test.com", email = "http@test.com" });
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/analysis")
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
@@ -37,7 +37,7 @@ public class HttpClientApiTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task PostAnalysis_ShouldReturnLocationHeader()
     {
-        var json = JsonSerializer.Serialize(new { url = "https://location-header-test.com" });
+        var json = JsonSerializer.Serialize(new { url = "https://location-header-test.com", email = "location@test.com" });
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/analysis")
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
@@ -53,7 +53,7 @@ public class HttpClientApiTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task PostAnalysis_ResponseShouldHaveJsonContentType()
     {
-        var json = JsonSerializer.Serialize(new { url = "https://content-type-test.com" });
+        var json = JsonSerializer.Serialize(new { url = "https://content-type-test.com", email = "content@test.com" });
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/analysis")
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
@@ -81,7 +81,7 @@ public class HttpClientApiTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task PostAnalysis_WithoutContentType_ShouldReturnUnsupportedMediaType()
     {
-        var json = JsonSerializer.Serialize(new { url = "https://no-content-type.com" });
+        var json = JsonSerializer.Serialize(new { url = "https://no-content-type.com", email = "nocontent@test.com" });
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/analysis")
         {
             Content = new StringContent(json, Encoding.UTF8)
@@ -99,7 +99,7 @@ public class HttpClientApiTests : IClassFixture<CustomWebApplicationFactory>
     public async Task GetAnalysisById_WithManualRequest_ShouldReturnFullDetails()
     {
         // Arrange — create analysis first
-        var postResponse = await _client.PostAsJsonAsync("/api/analysis", new { url = "https://manual-get-test.com" });
+        var postResponse = await _client.PostAsJsonAsync("/api/analysis", new { url = "https://manual-get-test.com", email = "manual@test.com" });
         var postBody = await postResponse.Content.ReadFromJsonAsync<JsonElement>();
         var id = postBody.GetProperty("id").GetString();
 
@@ -126,7 +126,7 @@ public class HttpClientApiTests : IClassFixture<CustomWebApplicationFactory>
     public async Task PostAndGet_FullFlow_ShouldReturnConsistentData()
     {
         // POST — create
-        var json = JsonSerializer.Serialize(new { url = "https://full-flow-test.com" });
+        var json = JsonSerializer.Serialize(new { url = "https://full-flow-test.com", email = "flow@test.com" });
         var postRequest = new HttpRequestMessage(HttpMethod.Post, "/api/analysis")
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")

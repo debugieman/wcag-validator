@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Url).IsRequired();
+            entity.Property(e => e.Email).IsRequired();
             entity.Property(e => e.Status).HasConversion<string>();
             entity.HasMany(e => e.Results)
                   .WithOne(e => e.AnalysisRequest)

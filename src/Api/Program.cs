@@ -71,6 +71,7 @@ app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepo
     {
         Id = Guid.NewGuid(),
         Url = request.Url,
+        Email = request.Email,
         Status = WcagAnalyzer.Domain.Enums.AnalysisStatus.Pending,
         CreatedAt = DateTime.UtcNow
     };
@@ -82,6 +83,7 @@ app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepo
     {
         analysis.Id,
         analysis.Url,
+        analysis.Email,
         Status = analysis.Status.ToString(),
         analysis.CreatedAt
     });
@@ -97,6 +99,7 @@ app.MapGet("/api/analysis/{id:guid}", async (Guid id, IAnalysisRepository repo) 
     {
         analysis.Id,
         analysis.Url,
+        analysis.Email,
         Status = analysis.Status.ToString(),
         analysis.CreatedAt,
         analysis.CompletedAt,
@@ -119,6 +122,7 @@ app.MapGet("/api/analysis", async (IAnalysisRepository repo) =>
     {
         a.Id,
         a.Url,
+        a.Email,
         Status = a.Status.ToString(),
         a.CreatedAt
     });
@@ -126,6 +130,6 @@ app.MapGet("/api/analysis", async (IAnalysisRepository repo) =>
 
 app.Run();
 
-record AnalysisCreateRequest(string Url);
+record AnalysisCreateRequest(string Url, string Email);
 
 public partial class Program { }

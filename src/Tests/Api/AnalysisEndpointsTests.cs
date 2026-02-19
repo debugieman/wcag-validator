@@ -83,7 +83,7 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task PostAnalysis_ValidUrl_ShouldReturn201()
     {
-        var payload = new { url = "https://example.com" };
+        var payload = new { url = "https://example.com", email = "user@example.com" };
 
         var response = await _client.PostAsJsonAsync("/api/analysis", payload);
 
@@ -91,6 +91,7 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("url").GetString().Should().Be("https://example.com");
+        content.GetProperty("email").GetString().Should().Be("user@example.com");
         content.GetProperty("status").GetString().Should().Be("Pending");
         content.GetProperty("id").GetString().Should().NotBeNullOrEmpty();
     }
@@ -98,7 +99,7 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task PostAnalysis_EmptyUrl_ShouldReturnCreatedWithEmptyUrl()
     {
-        var payload = new { url = "" };
+        var payload = new { url = "", email = "user@example.com" };
 
         var response = await _client.PostAsJsonAsync("/api/analysis", payload);
 
@@ -120,7 +121,7 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetAnalysis_AfterPost_ShouldContainPostedItem()
     {
-        var payload = new { url = "https://test-site.com" };
+        var payload = new { url = "https://test-site.com", email = "test@site.com" };
         var postResponse = await _client.PostAsJsonAsync("/api/analysis", payload);
         postResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -139,7 +140,7 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task PostAnalysis_ShouldEnqueueForProcessing()
     {
-        var payload = new { url = "https://enqueue-test.com" };
+        var payload = new { url = "https://enqueue-test.com", email = "enqueue@test.com" };
 
         var response = await _client.PostAsJsonAsync("/api/analysis", payload);
 
@@ -153,7 +154,7 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetAnalysisById_ExistingId_ShouldReturn200WithDetails()
     {
-        var payload = new { url = "https://details-test.com" };
+        var payload = new { url = "https://details-test.com", email = "details@test.com" };
         var postResponse = await _client.PostAsJsonAsync("/api/analysis", payload);
         var postContent = await postResponse.Content.ReadFromJsonAsync<JsonElement>();
         var id = postContent.GetProperty("id").GetString();
@@ -165,6 +166,7 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("id").GetString().Should().Be(id);
         content.GetProperty("url").GetString().Should().Be("https://details-test.com");
+        content.GetProperty("email").GetString().Should().Be("details@test.com");
         content.GetProperty("status").GetString().Should().Be("Pending");
         content.TryGetProperty("results", out var results).Should().BeTrue();
         results.GetArrayLength().Should().Be(0);
