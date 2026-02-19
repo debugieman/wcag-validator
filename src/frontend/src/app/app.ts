@@ -13,17 +13,37 @@ export class App {
   private http = inject(HttpClient);
 
   url = signal('');
+  email = signal('');
   message = signal('');
   messageType = signal<'success' | 'error'>('success');
   isLoading = signal(false);
 
   private urlPattern = /^https?:\/\/([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
+  private emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
   isValidUrl(): boolean {
     return this.urlPattern.test(this.url().trim());
   }
 
+  isValidEmail(): boolean {
+    return this.emailPattern.test(this.email().trim());
+  }
+
   onAnalyze() {
+    const emailValue = this.email().trim();
+
+    if (!emailValue) {
+      this.messageType.set('error');
+      this.message.set('Please enter an email address');
+      return;
+    }
+
+    if (!this.isValidEmail()) {
+      this.messageType.set('error');
+      this.message.set('Invalid email format. Use: your@email.com');
+      return;
+    }
+
     const value = this.url().trim();
 
     if (!value) {
@@ -41,7 +61,7 @@ export class App {
     this.isLoading.set(true);
     this.message.set('');
 
-    this.http.post<any>('/api/analysis', { url: value })
+    this.http.post<any>('/api/analysis', { url: value, email: emailValue })
       .subscribe({
         next: (res) => {
           this.messageType.set('success');

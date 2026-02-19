@@ -3,6 +3,15 @@
     <h1>WCAG Analyzer</h1>
     <p class="subtitle">Check your website for accessibility issues</p>
 
+    <input
+      class="email-field"
+      type="email"
+      placeholder="your@email.com"
+      [value]="email()"
+      (input)="email.set($any($event.target).value)"
+      (keydown.enter)="onAnalyze()"
+    />
+
     <div class="url-form">
       <input
         type="url"

@@ -34,6 +34,50 @@ describe('App', () => {
     expect(compiled.querySelector('h1')?.textContent).toContain('WCAG Analyzer');
   });
 
+  describe('isValidEmail', () => {
+    it('should accept valid email', () => {
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('user@example.com');
+      expect(app.isValidEmail()).toBe(true);
+    });
+
+    it('should accept email with dots and plus', () => {
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('first.last+tag@example.co.uk');
+      expect(app.isValidEmail()).toBe(true);
+    });
+
+    it('should reject empty string', () => {
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('');
+      expect(app.isValidEmail()).toBe(false);
+    });
+
+    it('should reject email without @', () => {
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('userexample.com');
+      expect(app.isValidEmail()).toBe(false);
+    });
+
+    it('should reject email without domain', () => {
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('user@');
+      expect(app.isValidEmail()).toBe(false);
+    });
+
+    it('should reject email with spaces', () => {
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('user @example.com');
+      expect(app.isValidEmail()).toBe(false);
+    });
+  });
+
   describe('isValidUrl', () => {
     it('should accept valid http URL', () => {
       const fixture = TestBed.createComponent(App);
@@ -93,9 +137,34 @@ describe('App', () => {
   });
 
   describe('onAnalyze', () => {
+    it('should show error when email is empty', () => {
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('');
+      app.url.set('https://example.com');
+
+      app.onAnalyze();
+
+      expect(app.message()).toBe('Please enter an email address');
+      expect(app.messageType()).toBe('error');
+    });
+
+    it('should show error when email format is invalid', () => {
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('not-an-email');
+      app.url.set('https://example.com');
+
+      app.onAnalyze();
+
+      expect(app.message()).toBe('Invalid email format. Use: your@email.com');
+      expect(app.messageType()).toBe('error');
+    });
+
     it('should show error when URL is empty', () => {
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
+      app.email.set('user@example.com');
       app.url.set('');
 
       app.onAnalyze();
@@ -107,6 +176,7 @@ describe('App', () => {
     it('should show error when URL format is invalid', () => {
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
+      app.email.set('user@example.com');
       app.url.set('invalid-url');
 
       app.onAnalyze();
@@ -119,6 +189,7 @@ describe('App', () => {
       httpTesting = TestBed.inject(HttpTestingController);
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
+      app.email.set('user@example.com');
       app.url.set('https://example.com');
 
       app.onAnalyze();
@@ -128,7 +199,7 @@ describe('App', () => {
 
       const req = httpTesting.expectOne('/api/analysis');
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ url: 'https://example.com' });
+      expect(req.request.body).toEqual({ url: 'https://example.com', email: 'user@example.com' });
 
       req.flush({ id: 'test-id-123' });
 
@@ -141,6 +212,7 @@ describe('App', () => {
       httpTesting = TestBed.inject(HttpTestingController);
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
+      app.email.set('user@example.com');
       app.url.set('https://example.com');
 
       app.onAnalyze();
@@ -157,6 +229,7 @@ describe('App', () => {
       httpTesting = TestBed.inject(HttpTestingController);
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
+      app.email.set('user@example.com');
       app.url.set('https://example.com');
 
       app.onAnalyze();
@@ -183,6 +256,7 @@ describe('App', () => {
       httpTesting = TestBed.inject(HttpTestingController);
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
+      app.email.set('user@example.com');
       app.url.set('https://example.com');
 
       app.onAnalyze();
@@ -201,7 +275,8 @@ describe('App', () => {
     it('should display error message with error class', async () => {
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
-      app.url.set('');
+      app.email.set('');
+      app.url.set('https://example.com');
 
       app.onAnalyze();
       fixture.detectChanges();
@@ -209,7 +284,7 @@ describe('App', () => {
 
       const messageEl = fixture.nativeElement.querySelector('.message') as HTMLElement;
       expect(messageEl).toBeTruthy();
-      expect(messageEl.textContent).toContain('Please enter a URL');
+      expect(messageEl.textContent).toContain('Please enter an email address');
       expect(messageEl.classList.contains('error')).toBe(true);
     });
   });
