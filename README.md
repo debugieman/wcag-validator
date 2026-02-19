@@ -9,7 +9,9 @@ A web application for validating website accessibility against WCAG (Web Content
 - **Database**: SQLite with Entity Framework Core
 - **Architecture**: Clean Architecture (Domain, Application, Infrastructure, Api)
 - **Testing**  xUnit, FluentAssertion, Moq
+- **API-**Testing** HttpClient
 - **BackGround processing** BackgroundService + Channel<Guid>
+
 
  
 
