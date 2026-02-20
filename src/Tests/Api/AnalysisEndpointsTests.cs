@@ -192,4 +192,17 @@ public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task PostAnalysis_SameDomainTwice_ShouldReturn429OnSecond()
+    {
+        var payload1 = new { url = "https://ratelimit-test.com/page1", email = "user@test.com" };
+        var response1 = await _client.PostAsJsonAsync("/api/analysis", payload1);
+        response1.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var payload2 = new { url = "https://ratelimit-test.com/page2", email = "user2@test.com" };
+        var response2 = await _client.PostAsJsonAsync("/api/analysis", payload2);
+
+        response2.StatusCode.Should().Be((HttpStatusCode)429);
+    }
 }

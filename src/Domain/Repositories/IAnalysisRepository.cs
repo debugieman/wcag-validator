@@ -10,4 +10,5 @@ public interface IAnalysisRepository
     Task<IEnumerable<AnalysisRequest>> GetByStatusAsync(AnalysisStatus status);
     Task AddAsync(AnalysisRequest request);
     Task UpdateAsync(AnalysisRequest request);
+    Task<bool> ExistsByDomainSinceAsync(string domain, DateTime since);
 }
