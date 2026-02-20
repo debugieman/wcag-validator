@@ -14,6 +14,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Repositories
 builder.Services.AddScoped<IAnalysisRepository, AnalysisRepository>();
 
+// Rate limiting
+builder.Services.AddScoped<IRateLimiter, AnalysisRateLimiter>();
+
 // Background processing
 builder.Services.AddSingleton<IAnalysisQueue, AnalysisQueue>();
 builder.Services.AddSingleton<PlaywrightBrowserManager>();
@@ -65,8 +68,15 @@ app.MapGet("/api/health", () => new
 });
 
 // Analysis endpoints
-app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepository repo, IAnalysisQueue queue) =>
+app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepository repo, IAnalysisQueue queue, IRateLimiter rateLimiter) =>
 {
+    if (!await rateLimiter.IsDomainAllowedAsync(request.Url))
+    {
+        return Results.Problem(
+            detail: "This domain was already analyzed in the last 24 hours.",
+            statusCode: 429);
+    }
+
     var analysis = new WcagAnalyzer.Domain.Entities.AnalysisRequest
     {
         Id = Guid.NewGuid(),

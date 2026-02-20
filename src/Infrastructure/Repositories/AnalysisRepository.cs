@@ -51,4 +51,10 @@ public class AnalysisRepository : IAnalysisRepository
 
         await _context.SaveChangesAsync();
     }
+
+    public async Task<bool> ExistsByDomainSinceAsync(string domain, DateTime since)
+    {
+        return await _context.AnalysisRequests
+            .AnyAsync(r => r.Url.Contains(domain) && r.CreatedAt >= since);
+    }
 }
