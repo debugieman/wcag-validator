@@ -36,8 +36,12 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             });
 
             var resultsJson = await page.EvaluateAsync<JsonElement>("() => axe.run().then(r => r)");
+            var violations = ParseViolations(resultsJson);
 
-            return ParseViolations(resultsJson);
+            var headingViolations = await CheckHeadingHierarchyAsync(page);
+            violations.AddRange(headingViolations);
+
+            return violations;
         }
         finally
         {
@@ -98,6 +102,95 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckHeadingHierarchyAsync(IPage page)
+    {
+        var headingsJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6')).map(h => ({
+                level: parseInt(h.tagName[1]),
+                html: h.outerHTML
+            }))
+        """);
+
+        var headings = new List<HeadingInfo>();
+        foreach (var h in headingsJson.EnumerateArray())
+        {
+            headings.Add(new HeadingInfo(
+                h.GetProperty("level").GetInt32(),
+                h.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeHeadingHierarchy(headings);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeHeadingHierarchy(List<HeadingInfo> headings)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        if (headings.Count == 0)
+            return violations;
+
+        var hasH1 = false;
+        var previousLevel = 0;
+
+        // Check if first heading is not h1
+        if (headings[0].Level != 1)
+        {
+            violations.Add(new AccessibilityViolation
+            {
+                RuleId = "heading-first-not-h1",
+                Impact = "moderate",
+                Description = "First heading on the page should be an <h1>",
+                HtmlElement = headings[0].OuterHtml
+            });
+        }
+
+        foreach (var heading in headings)
+        {
+            // Check for multiple h1
+            if (heading.Level == 1)
+            {
+                if (hasH1)
+                {
+                    violations.Add(new AccessibilityViolation
+                    {
+                        RuleId = "heading-multiple-h1",
+                        Impact = "moderate",
+                        Description = "Page should not contain more than one <h1>",
+                        HtmlElement = heading.OuterHtml
+                    });
+                }
+                hasH1 = true;
+            }
+
+            // Check for skipped levels
+            if (previousLevel > 0 && heading.Level > previousLevel + 1)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "heading-level-skipped",
+                    Impact = "moderate",
+                    Description = $"Heading level was skipped: expected <h{previousLevel + 1}> or lower, found <h{heading.Level}>",
+                    HtmlElement = heading.OuterHtml
+                });
+            }
+
+            previousLevel = heading.Level;
+        }
+
+        // Check for missing h1
+        if (!hasH1)
+        {
+            violations.Add(new AccessibilityViolation
+            {
+                RuleId = "heading-missing-h1",
+                Impact = "moderate",
+                Description = "Page should contain a top-level <h1> heading"
+            });
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -109,3 +202,5 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return reader.ReadToEnd();
     }
 }
+
+internal record HeadingInfo(int Level, string OuterHtml);
