@@ -41,6 +41,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var headingViolations = await CheckHeadingHierarchyAsync(page);
             violations.AddRange(headingViolations);
 
+            var langViolation = await CheckHtmlLangAsync(page);
+            if (langViolation is not null)
+                violations.Add(langViolation);
+
             return violations;
         }
         finally
@@ -189,6 +193,21 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         }
 
         return violations;
+    }
+
+    private static async Task<AccessibilityViolation?> CheckHtmlLangAsync(IPage page)
+    {
+        var lang = await page.EvaluateAsync<string>("() => document.documentElement.getAttribute('lang') || ''");
+        if (string.IsNullOrWhiteSpace(lang))
+        {
+            return new AccessibilityViolation
+            {
+                RuleId = "html-missing-lang",
+                Impact = "serious",
+                Description = "The <html> element should have a valid lang attribute"
+            };
+        }
+        return null;
     }
 
     private static string LoadAxeScript()
