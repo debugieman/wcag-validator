@@ -17,12 +17,12 @@ public class AnalysisProcessor : IAnalysisProcessor
 
     public async Task ProcessAsync(Guid analysisId, CancellationToken cancellationToken)
     {
-        var request = await _repository.GetByIdAsync(analysisId);
+        var request = await _repository.GetByIdAsync(analysisId, cancellationToken);
         if (request is null)
             return;
 
         request.Status = AnalysisStatus.InProgress;
-        await _repository.UpdateAsync(request);
+        await _repository.UpdateAsync(request, cancellationToken);
 
         try
         {
@@ -54,6 +54,6 @@ public class AnalysisProcessor : IAnalysisProcessor
             request.ErrorMessage = ex.Message;
         }
 
-        await _repository.UpdateAsync(request);
+        await _repository.UpdateAsync(request, cancellationToken);
     }
 }
