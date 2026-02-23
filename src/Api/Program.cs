@@ -87,7 +87,7 @@ app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepo
     };
 
     await repo.AddAsync(analysis, cancellationToken);
-    await queue.EnqueueAsync(analysis.Id, cancellationToken);
+    await queue.EnqueueAsync(analysis.Id);
 
     return Results.Created($"/api/analysis/{analysis.Id}", new
     {

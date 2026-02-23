@@ -6,9 +6,9 @@ public class AnalysisQueue : IAnalysisQueue
 {
     private readonly Channel<Guid> _channel = Channel.CreateUnbounded<Guid>();
 
-    public async ValueTask EnqueueAsync(Guid analysisId, CancellationToken cancellationToken = default)
+    public async ValueTask EnqueueAsync(Guid analysisId)
     {
-        await _channel.Writer.WriteAsync(analysisId, cancellationToken);
+        await _channel.Writer.WriteAsync(analysisId);
     }
 
     public async ValueTask<Guid> DequeueAsync(CancellationToken cancellationToken)
