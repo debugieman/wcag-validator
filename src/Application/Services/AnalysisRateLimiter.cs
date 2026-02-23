@@ -16,14 +16,14 @@ public class AnalysisRateLimiter : IRateLimiter
 
     public int MaxPagesPerCrawl => MaxPages;
 
-    public async Task<bool> IsDomainAllowedAsync(string url)
+    public async Task<bool> IsDomainAllowedAsync(string url, CancellationToken cancellationToken = default)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || string.IsNullOrEmpty(uri.Host))
             return true;
 
         var domain = StripWww(uri.Host);
         var since = DateTime.UtcNow.AddHours(-CooldownHours);
-        var exists = await _repository.ExistsByDomainSinceAsync(domain, since);
+        var exists = await _repository.ExistsByDomainSinceAsync(domain, since, cancellationToken);
         return !exists;
     }
 

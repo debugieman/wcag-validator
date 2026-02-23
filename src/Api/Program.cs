@@ -68,9 +68,9 @@ app.MapGet("/api/health", () => new
 });
 
 // Analysis endpoints
-app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepository repo, IAnalysisQueue queue, IRateLimiter rateLimiter) =>
+app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepository repo, IAnalysisQueue queue, IRateLimiter rateLimiter, CancellationToken cancellationToken) =>
 {
-    if (!await rateLimiter.IsDomainAllowedAsync(request.Url))
+    if (!await rateLimiter.IsDomainAllowedAsync(request.Url, cancellationToken))
     {
         return Results.Problem(
             detail: "This domain was already analyzed in the last 24 hours.",
@@ -86,8 +86,8 @@ app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepo
         CreatedAt = DateTime.UtcNow
     };
 
-    await repo.AddAsync(analysis);
-    await queue.EnqueueAsync(analysis.Id);
+    await repo.AddAsync(analysis, cancellationToken);
+    await queue.EnqueueAsync(analysis.Id, cancellationToken);
 
     return Results.Created($"/api/analysis/{analysis.Id}", new
     {
@@ -99,9 +99,9 @@ app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepo
     });
 });
 
-app.MapGet("/api/analysis/{id:guid}", async (Guid id, IAnalysisRepository repo) =>
+app.MapGet("/api/analysis/{id:guid}", async (Guid id, IAnalysisRepository repo, CancellationToken cancellationToken) =>
 {
-    var analysis = await repo.GetByIdAsync(id);
+    var analysis = await repo.GetByIdAsync(id, cancellationToken);
     if (analysis is null)
         return Results.NotFound(new { Message = "Analysis not found" });
 
@@ -125,9 +125,9 @@ app.MapGet("/api/analysis/{id:guid}", async (Guid id, IAnalysisRepository repo) 
     });
 });
 
-app.MapGet("/api/analysis", async (IAnalysisRepository repo) =>
+app.MapGet("/api/analysis", async (IAnalysisRepository repo, CancellationToken cancellationToken) =>
 {
-    var all = await repo.GetAllAsync();
+    var all = await repo.GetAllAsync(cancellationToken);
     return all.Select(a => new
     {
         a.Id,
