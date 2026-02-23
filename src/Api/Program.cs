@@ -1,4 +1,7 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using WcagAnalyzer.Application.Features.Analysis.Commands;
+using WcagAnalyzer.Application.Features.Analysis.Queries;
 using WcagAnalyzer.Application.Services;
 using WcagAnalyzer.Domain.Repositories;
 using WcagAnalyzer.Infrastructure.Data;
@@ -68,78 +71,40 @@ app.MapGet("/api/health", () => new
 });
 
 // Analysis endpoints
-app.MapPost("/api/analysis", async (AnalysisCreateRequest request, IAnalysisRepository repo, IAnalysisQueue queue, IRateLimiter rateLimiter, CancellationToken cancellationToken) =>
+app.MapPost("/api/analysis", async (CreateAnalysisCommand command, IMediator mediator, CancellationToken cancellationToken) =>
 {
-    if (!await rateLimiter.IsDomainAllowedAsync(request.Url, cancellationToken))
+    var result = await mediator.Send(command, cancellationToken);
+    if (result.IsRateLimited)
     {
         return Results.Problem(
             detail: "This domain was already analyzed in the last 24 hours.",
             statusCode: 429);
     }
 
-    var analysis = new WcagAnalyzer.Domain.Entities.AnalysisRequest
+    return Results.Created($"/api/analysis/{result.Id}", new
     {
-        Id = Guid.NewGuid(),
-        Url = request.Url,
-        Email = request.Email,
-        Status = WcagAnalyzer.Domain.Enums.AnalysisStatus.Pending,
-        CreatedAt = DateTime.UtcNow
-    };
-
-    await repo.AddAsync(analysis, cancellationToken);
-    await queue.EnqueueAsync(analysis.Id);
-
-    return Results.Created($"/api/analysis/{analysis.Id}", new
-    {
-        analysis.Id,
-        analysis.Url,
-        analysis.Email,
-        Status = analysis.Status.ToString(),
-        analysis.CreatedAt
+        result.Id,
+        result.Url,
+        result.Email,
+        result.Status,
+        result.CreatedAt
     });
 });
 
-app.MapGet("/api/analysis/{id:guid}", async (Guid id, IAnalysisRepository repo, CancellationToken cancellationToken) =>
+app.MapGet("/api/analysis/{id:guid}", async (Guid id, IMediator mediator, CancellationToken cancellationToken) =>
 {
-    var analysis = await repo.GetByIdAsync(id, cancellationToken);
-    if (analysis is null)
+    var result = await mediator.Send(new GetAnalysisByIdQuery(id), cancellationToken);
+    if (result is null)
         return Results.NotFound(new { Message = "Analysis not found" });
 
-    return Results.Ok(new
-    {
-        analysis.Id,
-        analysis.Url,
-        analysis.Email,
-        Status = analysis.Status.ToString(),
-        analysis.CreatedAt,
-        analysis.CompletedAt,
-        analysis.ErrorMessage,
-        Results = analysis.Results.Select(r => new
-        {
-            r.RuleId,
-            r.Impact,
-            r.Description,
-            r.HtmlElement,
-            r.HelpUrl
-        })
-    });
+    return Results.Ok(result);
 });
 
-app.MapGet("/api/analysis", async (IAnalysisRepository repo, CancellationToken cancellationToken) =>
+app.MapGet("/api/analysis", async (IMediator mediator, CancellationToken cancellationToken) =>
 {
-    var all = await repo.GetAllAsync(cancellationToken);
-    return all.Select(a => new
-    {
-        a.Id,
-        a.Url,
-        a.Email,
-        Status = a.Status.ToString(),
-        a.CreatedAt
-    });
+    return await mediator.Send(new GetAllAnalysesQuery(), cancellationToken);
 });
 
 app.Run();
-
-record AnalysisCreateRequest(string Url, string Email);
 
 public partial class Program { }
