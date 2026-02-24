@@ -45,6 +45,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (langViolation is not null)
                 violations.Add(langViolation);
 
+            var skipNavViolation = await CheckSkipNavigationAsync(page);
+            if (skipNavViolation is not null)
+                violations.Add(skipNavViolation);
+
             return violations;
         }
         finally
@@ -210,6 +214,46 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return null;
     }
 
+    private static async Task<AccessibilityViolation?> CheckSkipNavigationAsync(IPage page)
+    {
+        var linksJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('a[href^="#"]')).map(a => ({
+                href: a.getAttribute('href'),
+                text: (a.textContent || a.getAttribute('aria-label') || '').trim().toLowerCase()
+            }))
+        """);
+
+        var links = new List<SkipLinkInfo>();
+        foreach (var link in linksJson.EnumerateArray())
+        {
+            links.Add(new SkipLinkInfo(
+                link.GetProperty("href").GetString() ?? "",
+                link.GetProperty("text").GetString() ?? ""));
+        }
+
+        return AnalyzeSkipNavigation(links);
+    }
+
+    internal static AccessibilityViolation? AnalyzeSkipNavigation(List<SkipLinkInfo> links)
+    {
+        var skipKeywords = new[] { "skip", "jump", "bypass" };
+
+        var hasSkipLink = links.Any(l =>
+            skipKeywords.Any(keyword => l.Text.Contains(keyword)));
+
+        if (!hasSkipLink)
+        {
+            return new AccessibilityViolation
+            {
+                RuleId = "skip-navigation-missing",
+                Impact = "serious",
+                Description = "Page should contain a skip navigation link to allow keyboard users to bypass repeated content (WCAG 2.4.1)"
+            };
+        }
+
+        return null;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -223,3 +267,4 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
 }
 
 internal record HeadingInfo(int Level, string OuterHtml);
+internal record SkipLinkInfo(string Href, string Text);
