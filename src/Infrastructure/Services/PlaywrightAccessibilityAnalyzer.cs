@@ -49,6 +49,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (skipNavViolation is not null)
                 violations.Add(skipNavViolation);
 
+            var formViolations = await CheckFormInputLabelsAsync(page);
+            violations.AddRange(formViolations);
+
             return violations;
         }
         finally
@@ -254,6 +257,65 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return null;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckFormInputLabelsAsync(IPage page)
+    {
+        var inputsJson = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const excluded = ['hidden', 'submit', 'button', 'reset', 'image'];
+                return Array.from(document.querySelectorAll('input'))
+                    .filter(i => !excluded.includes(i.type))
+                    .map(i => ({
+                        id: i.id || '',
+                        type: i.type || 'text',
+                        ariaLabel: i.getAttribute('aria-label') || '',
+                        ariaLabelledBy: i.getAttribute('aria-labelledby') || '',
+                        hasLabel: i.id ? !!document.querySelector(`label[for="${i.id}"]`) : false,
+                        html: i.outerHTML
+                    }));
+            }
+        """);
+
+        var inputs = new List<FormInputInfo>();
+        foreach (var input in inputsJson.EnumerateArray())
+        {
+            inputs.Add(new FormInputInfo(
+                input.GetProperty("id").GetString() ?? "",
+                input.GetProperty("type").GetString() ?? "text",
+                input.GetProperty("ariaLabel").GetString() ?? "",
+                input.GetProperty("ariaLabelledBy").GetString() ?? "",
+                input.GetProperty("hasLabel").GetBoolean(),
+                input.GetProperty("html").GetString() ?? ""
+            ));
+        }
+
+        return AnalyzeFormInputLabels(inputs);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeFormInputLabels(List<FormInputInfo> inputs)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var input in inputs)
+        {
+            var hasAccessibleName = input.HasLabel
+                || !string.IsNullOrWhiteSpace(input.AriaLabel)
+                || !string.IsNullOrWhiteSpace(input.AriaLabelledBy);
+
+            if (!hasAccessibleName)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "input-missing-label",
+                    Impact = "critical",
+                    Description = $"Form input of type '{input.Type}' has no associated label, aria-label, or aria-labelledby (WCAG 1.3.1)",
+                    HtmlElement = input.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -268,3 +330,4 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
 
 internal record HeadingInfo(int Level, string OuterHtml);
 internal record SkipLinkInfo(string Href, string Text);
+internal record FormInputInfo(string Id, string Type, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
