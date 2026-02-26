@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
     <PackageReference Include="Microsoft.Playwright" Version="1.58.0" />
+    <PackageReference Include="QuestPDF" Version="2026.2.2" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -26,6 +27,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\axe.min.js" />
+    <EmbeddedResource Include="Resources\DEBUGIEMAN_LOGO.png" />
   </ItemGroup>
 
 </Project>

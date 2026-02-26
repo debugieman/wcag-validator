@@ -27,6 +27,9 @@ builder.Services.AddScoped<IAccessibilityAnalyzer, PlaywrightAccessibilityAnalyz
 builder.Services.AddScoped<IAnalysisProcessor, AnalysisProcessor>();
 builder.Services.AddHostedService<AnalysisBackgroundService>();
 
+// PDF report
+builder.Services.AddScoped<IPdfReportGenerator, PdfReportGenerator>();
+
 // MediatR
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(WcagAnalyzer.Application.AssemblyMarker).Assembly));
@@ -103,6 +106,20 @@ app.MapGet("/api/analysis/{id:guid}", async (Guid id, IMediator mediator, Cancel
 app.MapGet("/api/analysis", async (IMediator mediator, CancellationToken cancellationToken) =>
 {
     return await mediator.Send(new GetAllAnalysesQuery(), cancellationToken);
+});
+
+app.MapGet("/api/analysis/{id:guid}/report", async (Guid id, IMediator mediator, IPdfReportGenerator pdfGenerator, CancellationToken cancellationToken) =>
+{
+    var result = await mediator.Send(new GetAnalysisByIdQuery(id), cancellationToken);
+    if (result is null)
+        return Results.NotFound(new { Message = "Analysis not found" });
+
+    if (result.Status != "Completed")
+        return Results.Problem(detail: "Analysis is not completed yet.", statusCode: 409);
+
+    var pdfBytes = pdfGenerator.Generate(result);
+    var filename = $"wcag-report-{id}.pdf";
+    return Results.File(pdfBytes, "application/pdf", filename);
 });
 
 app.Run();
