@@ -6,14 +6,16 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using WcagAnalyzer.Application.Models;
 using WcagAnalyzer.Application.Services;
 using WcagAnalyzer.Infrastructure.Data;
+using WcagAnalyzer.Infrastructure.Services;
 
 namespace WcagAnalyzer.Tests.Api;
 
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IDisposable
 {
     private readonly SqliteConnection _connection;
 
@@ -40,7 +42,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite(_connection));
 
-            // Replace Playwright analyzer with a mock for integration tests
+            // Remove background service to prevent race conditions in tests
+            var backgroundService = services.FirstOrDefault(
+                d => d.ImplementationType == typeof(AnalysisBackgroundService));
+            if (backgroundService != null)
+                services.Remove(backgroundService);
+
+            // Replace Playwright analyzer with a mock
             var analyzerDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IAccessibilityAnalyzer));
             if (analyzerDescriptor != null)
                 services.Remove(analyzerDescriptor);
@@ -59,13 +67,21 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     }
 }
 
-public class AnalysisEndpointsTests : IClassFixture<CustomWebApplicationFactory>
+public class AnalysisEndpointsTests : IDisposable
 {
+    private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public AnalysisEndpointsTests(CustomWebApplicationFactory factory)
+    public AnalysisEndpointsTests()
     {
-        _client = factory.CreateClient();
+        _factory = new CustomWebApplicationFactory();
+        _client = _factory.CreateClient();
+    }
+
+    public void Dispose()
+    {
+        _client.Dispose();
+        _factory.Dispose();
     }
 
     [Fact]
