@@ -20,8 +20,8 @@
         (input)="url.set($any($event.target).value)"
         (keydown.enter)="onAnalyze()"
       />
-      <button (click)="onAnalyze()" [disabled]="isLoading()">
-        {{ isLoading() ? 'Saving...' : 'Analyze' }}
+      <button (click)="onAnalyze()" [disabled]="isLoading() || !isFormReady()">
+        {{ isLoading() ? 'Analyzing...' : 'Analyze' }}
       </button>
     </div>
 
