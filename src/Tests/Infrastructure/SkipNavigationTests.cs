@@ -5,52 +5,16 @@ namespace WcagAnalyzer.Tests.Infrastructure;
 
 public class SkipNavigationTests
 {
-    [Fact]
-    public void HasSkipToMainContentLink_ShouldReturnNoViolation()
+    [Theory]
+    [InlineData("skip to main content")]
+    [InlineData("skip navigation")]
+    [InlineData("jump to content")]
+    [InlineData("bypass navigation")]
+    public void LinkWithSkipKeyword_ShouldReturnNoViolation(string linkText)
     {
         var links = new List<SkipLinkInfo>
         {
-            new("#main", "skip to main content"),
-            new("#nav", "navigation")
-        };
-
-        var result = PlaywrightAccessibilityAnalyzer.AnalyzeSkipNavigation(links);
-
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public void HasSkipNavigationLink_ShouldReturnNoViolation()
-    {
-        var links = new List<SkipLinkInfo>
-        {
-            new("#content", "skip navigation")
-        };
-
-        var result = PlaywrightAccessibilityAnalyzer.AnalyzeSkipNavigation(links);
-
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public void HasJumpToContentLink_ShouldReturnNoViolation()
-    {
-        var links = new List<SkipLinkInfo>
-        {
-            new("#content", "jump to content")
-        };
-
-        var result = PlaywrightAccessibilityAnalyzer.AnalyzeSkipNavigation(links);
-
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public void HasBypassNavigationLink_ShouldReturnNoViolation()
-    {
-        var links = new List<SkipLinkInfo>
-        {
-            new("#main", "bypass navigation")
+            new("#main", linkText)
         };
 
         var result = PlaywrightAccessibilityAnalyzer.AnalyzeSkipNavigation(links);

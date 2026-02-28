@@ -7,6 +7,7 @@ using WcagAnalyzer.Application.Services;
 using WcagAnalyzer.Domain.Entities;
 using WcagAnalyzer.Domain.Enums;
 using WcagAnalyzer.Infrastructure.Data;
+using WcagAnalyzer.Domain.Repositories;
 using WcagAnalyzer.Infrastructure.Repositories;
 
 namespace WcagAnalyzer.Tests.Application;
@@ -133,6 +134,31 @@ public class AnalysisProcessorTests : IDisposable
         var updated = await _repository.GetByIdAsync(request.Id);
         updated!.Status.Should().Be(AnalysisStatus.Completed);
         updated.Results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ProcessAsync_ShouldSetStatusInProgressBeforeAnalysis()
+    {
+        var request = CreatePendingRequest();
+
+        var repoMock = new Mock<IAnalysisRepository>();
+        repoMock.Setup(r => r.GetByIdAsync(request.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(request);
+        repoMock.Setup(r => r.UpdateAsync(It.IsAny<AnalysisRequest>(), It.IsAny<CancellationToken>()))
+            .Returns((AnalysisRequest _, CancellationToken _) => Task.CompletedTask);
+
+        AnalysisStatus? statusDuringAnalysis = null;
+        _analyzerMock.Setup(a => a.AnalyzeAsync(request.Url, It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                statusDuringAnalysis = request.Status;
+                return Task.FromResult<IReadOnlyList<AccessibilityViolation>>(new List<AccessibilityViolation>());
+            });
+
+        var processor = new AnalysisProcessor(repoMock.Object, _analyzerMock.Object);
+        await processor.ProcessAsync(request.Id, CancellationToken.None);
+
+        statusDuringAnalysis.Should().Be(AnalysisStatus.InProgress);
     }
 
     [Fact]

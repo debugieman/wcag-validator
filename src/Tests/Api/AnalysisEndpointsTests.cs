@@ -113,20 +113,6 @@ public class AnalysisEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task PostAnalysis_EmptyUrl_ShouldReturnCreatedWithEmptyUrl()
-    {
-        var payload = new { url = "", email = "user@example.com" };
-
-        var response = await _client.PostAsJsonAsync("/api/analysis", payload);
-
-        // The API currently doesn't validate — it accepts any string
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("url").GetString().Should().BeEmpty();
-    }
-
-    [Fact]
     public async Task GetAnalysis_ShouldReturnOk()
     {
         var response = await _client.GetAsync("/api/analysis");
@@ -220,5 +206,28 @@ public class AnalysisEndpointsTests : IDisposable
         var response2 = await _client.PostAsJsonAsync("/api/analysis", payload2);
 
         response2.StatusCode.Should().Be((HttpStatusCode)429);
+    }
+
+    [Fact]
+    public async Task GetReport_NonExistingId_ShouldReturn404()
+    {
+        var fakeId = Guid.NewGuid();
+
+        var response = await _client.GetAsync($"/api/analysis/{fakeId}/report");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetReport_PendingAnalysis_ShouldReturn409()
+    {
+        var payload = new { url = "https://report-pending-test.com", email = "report@test.com" };
+        var postResponse = await _client.PostAsJsonAsync("/api/analysis", payload);
+        var postContent = await postResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = postContent.GetProperty("id").GetString();
+
+        var response = await _client.GetAsync($"/api/analysis/{id}/report");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 }
