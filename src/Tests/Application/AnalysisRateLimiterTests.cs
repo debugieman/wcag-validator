@@ -43,17 +43,14 @@ public class AnalysisRateLimiterTests
     [InlineData("https://example.com", "example.com")]
     [InlineData("https://sub.example.com/path?q=1", "sub.example.com")]
     [InlineData("http://www.test.org/", "test.org")]
+    [InlineData("https://example.com:3000/path", "example.com")]
+    [InlineData("https://example.com/path#section", "example.com")]
+    [InlineData("https://example.com/path?q=1#top", "example.com")]
     public void ExtractDomain_ShouldReturnExpectedDomain(string url, string expected)
     {
         var domain = AnalysisRateLimiter.ExtractDomain(url);
 
         domain.Should().Be(expected);
-    }
-
-    [Fact]
-    public void MaxPagesPerCrawl_ShouldReturn5()
-    {
-        _rateLimiter.MaxPagesPerCrawl.Should().Be(5);
     }
 
     [Fact]

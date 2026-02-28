@@ -205,6 +205,11 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
     private static async Task<AccessibilityViolation?> CheckHtmlLangAsync(IPage page)
     {
         var lang = await page.EvaluateAsync<string>("() => document.documentElement.getAttribute('lang') || ''");
+        return AnalyzeHtmlLang(lang);
+    }
+
+    internal static AccessibilityViolation? AnalyzeHtmlLang(string lang)
+    {
         if (string.IsNullOrWhiteSpace(lang))
         {
             return new AccessibilityViolation

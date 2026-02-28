@@ -37,12 +37,17 @@ public class AnalysisBackgroundServiceTests
     public async Task ExecuteAsync_ShouldProcessEnqueuedItem()
     {
         var id = Guid.NewGuid();
+        var tcs = new TaskCompletionSource();
+
+        _processorMock.Setup(p => p.ProcessAsync(id, It.IsAny<CancellationToken>()))
+            .Returns(() => { tcs.SetResult(); return Task.CompletedTask; });
+
         await _queue.EnqueueAsync(id);
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         _ = _service.StartAsync(cts.Token);
 
-        await Task.Delay(500);
+        await tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await _service.StopAsync(CancellationToken.None);
 
         _processorMock.Verify(p => p.ProcessAsync(id, It.IsAny<CancellationToken>()), Times.Once);
@@ -53,13 +58,23 @@ public class AnalysisBackgroundServiceTests
     {
         var id1 = Guid.NewGuid();
         var id2 = Guid.NewGuid();
+        var tcs1 = new TaskCompletionSource();
+        var tcs2 = new TaskCompletionSource();
+
+        _processorMock.Setup(p => p.ProcessAsync(id1, It.IsAny<CancellationToken>()))
+            .Returns(() => { tcs1.TrySetResult(); return Task.CompletedTask; });
+        _processorMock.Setup(p => p.ProcessAsync(id2, It.IsAny<CancellationToken>()))
+            .Returns(() => { tcs2.TrySetResult(); return Task.CompletedTask; });
+
         await _queue.EnqueueAsync(id1);
         await _queue.EnqueueAsync(id2);
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         _ = _service.StartAsync(cts.Token);
 
-        await Task.Delay(500);
+        await Task.WhenAll(
+            tcs1.Task.WaitAsync(TimeSpan.FromSeconds(5)),
+            tcs2.Task.WaitAsync(TimeSpan.FromSeconds(5)));
         await _service.StopAsync(CancellationToken.None);
 
         _processorMock.Verify(p => p.ProcessAsync(id1, It.IsAny<CancellationToken>()), Times.Once);
@@ -71,17 +86,20 @@ public class AnalysisBackgroundServiceTests
     {
         var id1 = Guid.NewGuid();
         var id2 = Guid.NewGuid();
+        var tcs2 = new TaskCompletionSource();
 
         _processorMock.Setup(p => p.ProcessAsync(id1, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("processing failed"));
+        _processorMock.Setup(p => p.ProcessAsync(id2, It.IsAny<CancellationToken>()))
+            .Returns(() => { tcs2.TrySetResult(); return Task.CompletedTask; });
 
         await _queue.EnqueueAsync(id1);
         await _queue.EnqueueAsync(id2);
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         _ = _service.StartAsync(cts.Token);
 
-        await Task.Delay(500);
+        await tcs2.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await _service.StopAsync(CancellationToken.None);
 
         _processorMock.Verify(p => p.ProcessAsync(id2, It.IsAny<CancellationToken>()), Times.Once);
@@ -93,7 +111,6 @@ public class AnalysisBackgroundServiceTests
         using var cts = new CancellationTokenSource();
         _ = _service.StartAsync(cts.Token);
 
-        await Task.Delay(200);
         cts.Cancel();
         await _service.StopAsync(CancellationToken.None);
 
