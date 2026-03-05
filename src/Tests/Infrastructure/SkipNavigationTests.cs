@@ -51,6 +51,19 @@ public class SkipNavigationTests
     }
 
     [Fact]
+    public void LinkTextWithWhitespace_ShouldReturnNoViolation()
+    {
+        var links = new List<SkipLinkInfo>
+        {
+            new("#main", "  skip to main content  ")
+        };
+
+        var result = PlaywrightAccessibilityAnalyzer.AnalyzeSkipNavigation(links);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
     public void ViolationDescription_ShouldMentionWCAG241()
     {
         var links = new List<SkipLinkInfo>();

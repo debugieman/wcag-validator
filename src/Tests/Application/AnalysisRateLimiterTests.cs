@@ -53,6 +53,19 @@ public class AnalysisRateLimiterTests
         domain.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData("not-a-url")]
+    [InlineData("")]
+    [InlineData("://invalid")]
+    public async Task IsDomainAllowedAsync_InvalidOrMalformedUrl_ShouldReturnTrue(string url)
+    {
+        // Invalid URLs bypass rate limiting — no domain can be extracted
+        var result = await _rateLimiter.IsDomainAllowedAsync(url);
+
+        result.Should().BeTrue();
+        _repoMock.Verify(r => r.ExistsByDomainSinceAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task IsDomainAllowedAsync_ShouldPassCorrectDomainToRepository()
     {
