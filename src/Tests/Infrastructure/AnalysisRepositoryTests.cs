@@ -222,6 +222,68 @@ public class AnalysisRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task ExistsByDomainSinceAsync_MatchingDomainWithinWindow_ShouldReturnTrue()
+    {
+        var request = new AnalysisRequest
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com",
+            Status = AnalysisStatus.Completed,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _context.AnalysisRequests.AddAsync(request);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.ExistsByDomainSinceAsync("example.com", DateTime.UtcNow.AddHours(-1));
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExistsByDomainSinceAsync_MatchingDomainOutsideWindow_ShouldReturnFalse()
+    {
+        var request = new AnalysisRequest
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com",
+            Status = AnalysisStatus.Completed,
+            CreatedAt = DateTime.UtcNow.AddHours(-25)
+        };
+        await _context.AnalysisRequests.AddAsync(request);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.ExistsByDomainSinceAsync("example.com", DateTime.UtcNow.AddHours(-24));
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ExistsByDomainSinceAsync_DifferentDomain_ShouldReturnFalse()
+    {
+        var request = new AnalysisRequest
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://other.com",
+            Status = AnalysisStatus.Completed,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _context.AnalysisRequests.AddAsync(request);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.ExistsByDomainSinceAsync("example.com", DateTime.UtcNow.AddHours(-1));
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ExistsByDomainSinceAsync_EmptyDatabase_ShouldReturnFalse()
+    {
+        var result = await _repository.ExistsByDomainSinceAsync("example.com", DateTime.UtcNow.AddHours(-24));
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task GetByIdAsync_ShouldIncludeResults()
     {
         var requestId = Guid.NewGuid();
