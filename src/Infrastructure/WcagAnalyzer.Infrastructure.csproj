@@ -27,7 +27,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\axe.min.js" />
-    <EmbeddedResource Include="Resources\DEBUGIEMAN_LOGO.png" />
+    <EmbeddedResource Condition="Exists('Resources\DEBUGIEMAN_LOGO.png')" Include="Resources\DEBUGIEMAN_LOGO.png" />
   </ItemGroup>
 
 </Project>

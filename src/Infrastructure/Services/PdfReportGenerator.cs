@@ -29,7 +29,7 @@ public class PdfReportGenerator : IPdfReportGenerator
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
-        var logoBytes = LoadLogo();
+        var logoBytes = TryLoadLogo();
         var grouped = GroupByImpact(analysis);
 
         var document = Document.Create(container =>
@@ -49,15 +49,16 @@ public class PdfReportGenerator : IPdfReportGenerator
         return document.GeneratePdf();
     }
 
-    private static void ComposeHeader(IContainer container, byte[] logoBytes, GetAnalysisByIdResult analysis)
+    private static void ComposeHeader(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
     {
         container.Column(col =>
         {
             col.Item().Row(row =>
             {
-                row.ConstantItem(80).Image(logoBytes);
+                if (logoBytes is not null)
+                    row.ConstantItem(80).Image(logoBytes);
 
-                row.RelativeItem().PaddingLeft(16).Column(inner =>
+                row.RelativeItem().PaddingLeft(logoBytes is not null ? 16 : 0).Column(inner =>
                 {
                     inner.Item().Text("WCAG Accessibility Report")
                         .FontSize(20).Bold().FontColor("#1A237E");
@@ -203,11 +204,14 @@ public class PdfReportGenerator : IPdfReportGenerator
         return html.Length > maxLength ? html[..maxLength] + "..." : html;
     }
 
-    private static byte[] LoadLogo()
+    private static byte[]? TryLoadLogo()
     {
         var assembly = Assembly.GetExecutingAssembly();
         var resourceName = assembly.GetManifestResourceNames()
-            .First(n => n.EndsWith("DEBUGIEMAN_LOGO.png"));
+            .FirstOrDefault(n => n.EndsWith("DEBUGIEMAN_LOGO.png"));
+
+        if (resourceName is null)
+            return null;
 
         using var stream = assembly.GetManifestResourceStream(resourceName)!;
         using var ms = new MemoryStream();
