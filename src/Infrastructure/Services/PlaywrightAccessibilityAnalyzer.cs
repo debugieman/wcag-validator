@@ -52,6 +52,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var formViolations = await CheckFormInputLabelsAsync(page);
             violations.AddRange(formViolations);
 
+            var titleViolation = await CheckDocumentTitleAsync(page);
+            if (titleViolation is not null)
+                violations.Add(titleViolation);
+
             return violations;
         }
         finally
@@ -321,6 +325,26 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
+    private static async Task<AccessibilityViolation?> CheckDocumentTitleAsync(IPage page)
+    {
+        var title = await page.EvaluateAsync<string>("() => document.title || ''");
+        return AnalyzeDocumentTitle(new DocumentTitleInfo(title));
+    }
+
+    internal static AccessibilityViolation? AnalyzeDocumentTitle(DocumentTitleInfo titleInfo)
+    {
+        if (string.IsNullOrWhiteSpace(titleInfo.Title))
+        {
+            return new AccessibilityViolation
+            {
+                RuleId = "document-title-missing",
+                Impact = "serious",
+                Description = "Every page should contain a descriptive <title> element (WCAG 2.4.2)"
+            };
+        }
+        return null;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -336,3 +360,4 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
 internal record HeadingInfo(int Level, string OuterHtml);
 internal record SkipLinkInfo(string Href, string Text);
 internal record FormInputInfo(string Id, string Type, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
+internal record DocumentTitleInfo(string Title);
