@@ -56,6 +56,19 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (titleViolation is not null)
                 violations.Add(titleViolation);
 
+            var svgViolations = await CheckSvgImagesAsync(page);
+            violations.AddRange(svgViolations);
+
+            var emptyLinkViolations = await CheckEmptyLinksAsync(page);
+            violations.AddRange(emptyLinkViolations);
+
+            var viewportViolation = await CheckMetaViewportAsync(page);
+            if (viewportViolation is not null)
+                violations.Add(viewportViolation);
+
+            var emptyButtonViolations = await CheckEmptyButtonsAsync(page);
+            violations.AddRange(emptyButtonViolations);
+
             return violations;
         }
         finally
@@ -345,6 +358,188 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return null;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckSvgImagesAsync(IPage page)
+    {
+        var svgsJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('svg')).map(svg => ({
+                ariaLabel: svg.getAttribute('aria-label') || '',
+                ariaLabelledBy: svg.getAttribute('aria-labelledby') || '',
+                role: svg.getAttribute('role') || '',
+                hasTitle: !!svg.querySelector('title'),
+                html: svg.outerHTML.substring(0, 200)
+            }))
+        """);
+
+        var svgs = new List<SvgInfo>();
+        foreach (var svg in svgsJson.EnumerateArray())
+        {
+            svgs.Add(new SvgInfo(
+                svg.GetProperty("ariaLabel").GetString() ?? "",
+                svg.GetProperty("ariaLabelledBy").GetString() ?? "",
+                svg.GetProperty("role").GetString() ?? "",
+                svg.GetProperty("hasTitle").GetBoolean(),
+                svg.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeSvgImages(svgs);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeSvgImages(List<SvgInfo> svgs)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var svg in svgs)
+        {
+            var hasAccessibleName = !string.IsNullOrWhiteSpace(svg.AriaLabel)
+                || !string.IsNullOrWhiteSpace(svg.AriaLabelledBy)
+                || (svg.Role == "img" && svg.HasTitle);
+
+            if (!hasAccessibleName)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "svg-image-missing-alt",
+                    Impact = "serious",
+                    Description = "SVG image must have an accessible name via aria-label, aria-labelledby, or role=\"img\" with a <title> element (WCAG 1.1.1)",
+                    HtmlElement = svg.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
+    private static async Task<List<AccessibilityViolation>> CheckEmptyLinksAsync(IPage page)
+    {
+        var linksJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('a[href]')).map(a => ({
+                text: (a.textContent || '').trim(),
+                ariaLabel: a.getAttribute('aria-label') || '',
+                ariaLabelledBy: a.getAttribute('aria-labelledby') || '',
+                html: a.outerHTML.substring(0, 200)
+            }))
+        """);
+
+        var links = new List<LinkInfo>();
+        foreach (var link in linksJson.EnumerateArray())
+        {
+            links.Add(new LinkInfo(
+                link.GetProperty("text").GetString() ?? "",
+                link.GetProperty("ariaLabel").GetString() ?? "",
+                link.GetProperty("ariaLabelledBy").GetString() ?? "",
+                link.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeEmptyLinks(links);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeEmptyLinks(List<LinkInfo> links)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var link in links)
+        {
+            var hasAccessibleName = !string.IsNullOrWhiteSpace(link.Text)
+                || !string.IsNullOrWhiteSpace(link.AriaLabel)
+                || !string.IsNullOrWhiteSpace(link.AriaLabelledBy);
+
+            if (!hasAccessibleName)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "link-empty",
+                    Impact = "serious",
+                    Description = "Links must have discernible text so screen reader users know their purpose (WCAG 2.4.4)",
+                    HtmlElement = link.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
+    private static async Task<AccessibilityViolation?> CheckMetaViewportAsync(IPage page)
+    {
+        var content = await page.EvaluateAsync<string>("""
+            () => {
+                const meta = document.querySelector('meta[name="viewport"]');
+                return meta ? meta.getAttribute('content') || '' : '';
+            }
+        """);
+
+        return AnalyzeMetaViewport(content);
+    }
+
+    internal static AccessibilityViolation? AnalyzeMetaViewport(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return null;
+
+        var disablesZoom = content.Contains("user-scalable=no")
+            || content.Contains("user-scalable=0");
+
+        if (disablesZoom)
+        {
+            return new AccessibilityViolation
+            {
+                RuleId = "meta-viewport-zoom-disabled",
+                Impact = "critical",
+                Description = "Viewport meta must not disable zoom — users with low vision need to scale content (WCAG 1.4.4)"
+            };
+        }
+
+        return null;
+    }
+
+    private static async Task<List<AccessibilityViolation>> CheckEmptyButtonsAsync(IPage page)
+    {
+        var buttonsJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('button')).map(btn => ({
+                text: (btn.textContent || '').trim(),
+                ariaLabel: btn.getAttribute('aria-label') || '',
+                ariaLabelledBy: btn.getAttribute('aria-labelledby') || '',
+                html: btn.outerHTML.substring(0, 200)
+            }))
+        """);
+
+        var buttons = new List<ButtonInfo>();
+        foreach (var btn in buttonsJson.EnumerateArray())
+        {
+            buttons.Add(new ButtonInfo(
+                btn.GetProperty("text").GetString() ?? "",
+                btn.GetProperty("ariaLabel").GetString() ?? "",
+                btn.GetProperty("ariaLabelledBy").GetString() ?? "",
+                btn.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeEmptyButtons(buttons);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeEmptyButtons(List<ButtonInfo> buttons)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var button in buttons)
+        {
+            var hasAccessibleName = !string.IsNullOrWhiteSpace(button.Text)
+                || !string.IsNullOrWhiteSpace(button.AriaLabel)
+                || !string.IsNullOrWhiteSpace(button.AriaLabelledBy);
+
+            if (!hasAccessibleName)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "button-empty",
+                    Impact = "serious",
+                    Description = "Buttons must have discernible text so screen reader users know their purpose (WCAG 4.1.2)",
+                    HtmlElement = button.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -361,3 +556,6 @@ internal record HeadingInfo(int Level, string OuterHtml);
 internal record SkipLinkInfo(string Href, string Text);
 internal record FormInputInfo(string Id, string Type, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
 internal record DocumentTitleInfo(string Title);
+internal record SvgInfo(string AriaLabel, string AriaLabelledBy, string Role, bool HasTitle, string Html);
+internal record LinkInfo(string Text, string AriaLabel, string AriaLabelledBy, string Html);
+internal record ButtonInfo(string Text, string AriaLabel, string AriaLabelledBy, string Html);
