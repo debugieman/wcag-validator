@@ -41,10 +41,6 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var headingViolations = await CheckHeadingHierarchyAsync(page);
             violations.AddRange(headingViolations);
 
-            var langViolation = await CheckHtmlLangAsync(page);
-            if (langViolation is not null)
-                violations.Add(langViolation);
-
             var skipNavViolation = await CheckSkipNavigationAsync(page);
             if (skipNavViolation is not null)
                 violations.Add(skipNavViolation);
@@ -52,22 +48,8 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var formViolations = await CheckFormInputLabelsAsync(page);
             violations.AddRange(formViolations);
 
-            var titleViolation = await CheckDocumentTitleAsync(page);
-            if (titleViolation is not null)
-                violations.Add(titleViolation);
-
             var svgViolations = await CheckSvgImagesAsync(page);
             violations.AddRange(svgViolations);
-
-            var emptyLinkViolations = await CheckEmptyLinksAsync(page);
-            violations.AddRange(emptyLinkViolations);
-
-            var viewportViolation = await CheckMetaViewportAsync(page);
-            if (viewportViolation is not null)
-                violations.Add(viewportViolation);
-
-            var emptyButtonViolations = await CheckEmptyButtonsAsync(page);
-            violations.AddRange(emptyButtonViolations);
 
             return violations;
         }
@@ -219,26 +201,6 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
-    private static async Task<AccessibilityViolation?> CheckHtmlLangAsync(IPage page)
-    {
-        var lang = await page.EvaluateAsync<string>("() => document.documentElement.getAttribute('lang') || ''");
-        return AnalyzeHtmlLang(lang);
-    }
-
-    internal static AccessibilityViolation? AnalyzeHtmlLang(string lang)
-    {
-        if (string.IsNullOrWhiteSpace(lang))
-        {
-            return new AccessibilityViolation
-            {
-                RuleId = "html-missing-lang",
-                Impact = "serious",
-                Description = "The <html> element should have a valid lang attribute"
-            };
-        }
-        return null;
-    }
-
     private static async Task<AccessibilityViolation?> CheckSkipNavigationAsync(IPage page)
     {
         var linksJson = await page.EvaluateAsync<JsonElement>("""
@@ -338,26 +300,6 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
-    private static async Task<AccessibilityViolation?> CheckDocumentTitleAsync(IPage page)
-    {
-        var title = await page.EvaluateAsync<string>("() => document.title || ''");
-        return AnalyzeDocumentTitle(new DocumentTitleInfo(title));
-    }
-
-    internal static AccessibilityViolation? AnalyzeDocumentTitle(DocumentTitleInfo titleInfo)
-    {
-        if (string.IsNullOrWhiteSpace(titleInfo.Title))
-        {
-            return new AccessibilityViolation
-            {
-                RuleId = "document-title-missing",
-                Impact = "serious",
-                Description = "Every page should contain a descriptive <title> element (WCAG 2.4.2)"
-            };
-        }
-        return null;
-    }
-
     private static async Task<List<AccessibilityViolation>> CheckSvgImagesAsync(IPage page)
     {
         var svgsJson = await page.EvaluateAsync<JsonElement>("""
@@ -409,137 +351,6 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
-    private static async Task<List<AccessibilityViolation>> CheckEmptyLinksAsync(IPage page)
-    {
-        var linksJson = await page.EvaluateAsync<JsonElement>("""
-            () => Array.from(document.querySelectorAll('a[href]')).map(a => ({
-                text: (a.textContent || '').trim(),
-                ariaLabel: a.getAttribute('aria-label') || '',
-                ariaLabelledBy: a.getAttribute('aria-labelledby') || '',
-                html: a.outerHTML.substring(0, 200)
-            }))
-        """);
-
-        var links = new List<LinkInfo>();
-        foreach (var link in linksJson.EnumerateArray())
-        {
-            links.Add(new LinkInfo(
-                link.GetProperty("text").GetString() ?? "",
-                link.GetProperty("ariaLabel").GetString() ?? "",
-                link.GetProperty("ariaLabelledBy").GetString() ?? "",
-                link.GetProperty("html").GetString() ?? ""));
-        }
-
-        return AnalyzeEmptyLinks(links);
-    }
-
-    internal static List<AccessibilityViolation> AnalyzeEmptyLinks(List<LinkInfo> links)
-    {
-        var violations = new List<AccessibilityViolation>();
-
-        foreach (var link in links)
-        {
-            var hasAccessibleName = !string.IsNullOrWhiteSpace(link.Text)
-                || !string.IsNullOrWhiteSpace(link.AriaLabel)
-                || !string.IsNullOrWhiteSpace(link.AriaLabelledBy);
-
-            if (!hasAccessibleName)
-            {
-                violations.Add(new AccessibilityViolation
-                {
-                    RuleId = "link-empty",
-                    Impact = "serious",
-                    Description = "Links must have discernible text so screen reader users know their purpose (WCAG 2.4.4)",
-                    HtmlElement = link.Html
-                });
-            }
-        }
-
-        return violations;
-    }
-
-    private static async Task<AccessibilityViolation?> CheckMetaViewportAsync(IPage page)
-    {
-        var content = await page.EvaluateAsync<string>("""
-            () => {
-                const meta = document.querySelector('meta[name="viewport"]');
-                return meta ? meta.getAttribute('content') || '' : '';
-            }
-        """);
-
-        return AnalyzeMetaViewport(content);
-    }
-
-    internal static AccessibilityViolation? AnalyzeMetaViewport(string content)
-    {
-        if (string.IsNullOrWhiteSpace(content))
-            return null;
-
-        var disablesZoom = content.Contains("user-scalable=no")
-            || content.Contains("user-scalable=0");
-
-        if (disablesZoom)
-        {
-            return new AccessibilityViolation
-            {
-                RuleId = "meta-viewport-zoom-disabled",
-                Impact = "critical",
-                Description = "Viewport meta must not disable zoom — users with low vision need to scale content (WCAG 1.4.4)"
-            };
-        }
-
-        return null;
-    }
-
-    private static async Task<List<AccessibilityViolation>> CheckEmptyButtonsAsync(IPage page)
-    {
-        var buttonsJson = await page.EvaluateAsync<JsonElement>("""
-            () => Array.from(document.querySelectorAll('button')).map(btn => ({
-                text: (btn.textContent || '').trim(),
-                ariaLabel: btn.getAttribute('aria-label') || '',
-                ariaLabelledBy: btn.getAttribute('aria-labelledby') || '',
-                html: btn.outerHTML.substring(0, 200)
-            }))
-        """);
-
-        var buttons = new List<ButtonInfo>();
-        foreach (var btn in buttonsJson.EnumerateArray())
-        {
-            buttons.Add(new ButtonInfo(
-                btn.GetProperty("text").GetString() ?? "",
-                btn.GetProperty("ariaLabel").GetString() ?? "",
-                btn.GetProperty("ariaLabelledBy").GetString() ?? "",
-                btn.GetProperty("html").GetString() ?? ""));
-        }
-
-        return AnalyzeEmptyButtons(buttons);
-    }
-
-    internal static List<AccessibilityViolation> AnalyzeEmptyButtons(List<ButtonInfo> buttons)
-    {
-        var violations = new List<AccessibilityViolation>();
-
-        foreach (var button in buttons)
-        {
-            var hasAccessibleName = !string.IsNullOrWhiteSpace(button.Text)
-                || !string.IsNullOrWhiteSpace(button.AriaLabel)
-                || !string.IsNullOrWhiteSpace(button.AriaLabelledBy);
-
-            if (!hasAccessibleName)
-            {
-                violations.Add(new AccessibilityViolation
-                {
-                    RuleId = "button-empty",
-                    Impact = "serious",
-                    Description = "Buttons must have discernible text so screen reader users know their purpose (WCAG 4.1.2)",
-                    HtmlElement = button.Html
-                });
-            }
-        }
-
-        return violations;
-    }
-
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -555,7 +366,4 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
 internal record HeadingInfo(int Level, string OuterHtml);
 internal record SkipLinkInfo(string Href, string Text);
 internal record FormInputInfo(string Id, string Type, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
-internal record DocumentTitleInfo(string Title);
 internal record SvgInfo(string AriaLabel, string AriaLabelledBy, string Role, bool HasTitle, string Html);
-internal record LinkInfo(string Text, string AriaLabel, string AriaLabelledBy, string Html);
-internal record ButtonInfo(string Text, string AriaLabel, string AriaLabelledBy, string Html);
