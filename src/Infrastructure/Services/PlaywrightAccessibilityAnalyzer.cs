@@ -51,6 +51,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var svgViolations = await CheckSvgImagesAsync(page);
             violations.AddRange(svgViolations);
 
+            var tabindexViolations = await CheckTabindexAsync(page);
+            violations.AddRange(tabindexViolations);
+
             return violations;
         }
         finally
@@ -351,6 +354,65 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckTabindexAsync(IPage page)
+    {
+        var elementsJson = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const interactive = ['a', 'button', 'input', 'select', 'textarea'];
+                return Array.from(document.querySelectorAll('[tabindex]')).map(el => ({
+                    tag: el.tagName.toLowerCase(),
+                    tabindex: parseInt(el.getAttribute('tabindex')),
+                    isInteractive: interactive.includes(el.tagName.toLowerCase()),
+                    html: el.outerHTML.substring(0, 200)
+                }));
+            }
+        """);
+
+        var elements = new List<TabindexInfo>();
+        foreach (var el in elementsJson.EnumerateArray())
+        {
+            elements.Add(new TabindexInfo(
+                el.GetProperty("tag").GetString() ?? "",
+                el.GetProperty("tabindex").GetInt32(),
+                el.GetProperty("isInteractive").GetBoolean(),
+                el.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeTabindex(elements);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeTabindex(List<TabindexInfo> elements)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var el in elements)
+        {
+            if (el.Tabindex > 0)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "tabindex-positive",
+                    Impact = "moderate",
+                    Description = $"Element has tabindex=\"{el.Tabindex}\" which disrupts the natural tab order for keyboard users (WCAG 2.4.3)",
+                    HtmlElement = el.Html
+                });
+            }
+
+            if (el.Tabindex == -1 && el.IsInteractive)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "interactive-not-focusable",
+                    Impact = "serious",
+                    Description = $"Interactive <{el.Tag}> element has tabindex=\"-1\" making it unreachable by keyboard (WCAG 2.1.1)",
+                    HtmlElement = el.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -367,3 +429,4 @@ internal record HeadingInfo(int Level, string OuterHtml);
 internal record SkipLinkInfo(string Href, string Text);
 internal record FormInputInfo(string Id, string Type, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
 internal record SvgInfo(string AriaLabel, string AriaLabelledBy, string Role, bool HasTitle, string Html);
+internal record TabindexInfo(string Tag, int Tabindex, bool IsInteractive, string Html);
