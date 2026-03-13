@@ -65,6 +65,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (trapViolation is not null)
                 violations.Add(trapViolation);
 
+            var touchTargetViolations = await CheckTouchTargetSizeAsync(page);
+            violations.AddRange(touchTargetViolations);
+
             return violations;
         }
         finally
@@ -561,6 +564,60 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         };
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckTouchTargetSizeAsync(IPage page)
+    {
+        var elementsJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('a, button, input, select, textarea, [role="button"], [role="link"]'))
+                .filter(el => {
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden';
+                })
+                .map(el => {
+                    const rect = el.getBoundingClientRect();
+                    return {
+                        tag: el.tagName.toLowerCase(),
+                        width: rect.width,
+                        height: rect.height,
+                        html: el.outerHTML.substring(0, 200)
+                    };
+                })
+        """);
+
+        var elements = new List<TouchTargetInfo>();
+        foreach (var el in elementsJson.EnumerateArray())
+        {
+            elements.Add(new TouchTargetInfo(
+                el.GetProperty("tag").GetString() ?? "",
+                el.GetProperty("width").GetDouble(),
+                el.GetProperty("height").GetDouble(),
+                el.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeTouchTargetSize(elements);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeTouchTargetSize(List<TouchTargetInfo> elements)
+    {
+        const int MinSize = 44;
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var el in elements)
+        {
+            if (el.Width < MinSize || el.Height < MinSize)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "touch-target-too-small",
+                    Impact = "moderate",
+                    Description = $"Interactive <{el.Tag}> element is {el.Width:F0}×{el.Height:F0}px — touch target must be at least 44×44px for users with motor impairments (WCAG 2.5.5)",
+                    HtmlElement = el.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -579,3 +636,4 @@ internal record FormInputInfo(string Id, string Type, string AriaLabel, string A
 internal record SvgInfo(string AriaLabel, string AriaLabelledBy, string Role, bool HasTitle, string Html);
 internal record TabindexInfo(string Tag, int Tabindex, bool IsInteractive, string Html);
 internal record FocusInfo(string Tag, string OutlineWidth, string OutlineStyle, string OutlineColor, string Html);
+internal record TouchTargetInfo(string Tag, double Width, double Height, string Html);
