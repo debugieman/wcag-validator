@@ -61,6 +61,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (reflowViolation is not null)
                 violations.Add(reflowViolation);
 
+            var trapViolation = await CheckKeyboardTrapAsync(page);
+            if (trapViolation is not null)
+                violations.Add(trapViolation);
+
             return violations;
         }
         finally
@@ -510,6 +514,51 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         }
 
         return null;
+    }
+
+    private static async Task<AccessibilityViolation?> CheckKeyboardTrapAsync(IPage page)
+    {
+        var maxTabs = 50;
+        var focusedElements = new List<string>();
+
+        await page.Keyboard.PressAsync("Tab");
+
+        for (var i = 0; i < maxTabs; i++)
+        {
+            var focused = await page.EvaluateAsync<string>("""
+                () => {
+                    const el = document.activeElement;
+                    if (!el || el === document.body) return '';
+                    return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className.trim().replace(/\s+/g, '.') : '');
+                }
+            """);
+
+            if (string.IsNullOrEmpty(focused))
+                break;
+
+            // If we've seen this element before and it's not the natural cycle end — trap detected
+            var previousCount = focusedElements.Count(e => e == focused);
+            if (previousCount >= 2)
+                return AnalyzeKeyboardTrap(trapped: true, elementIdentifier: focused);
+
+            focusedElements.Add(focused);
+            await page.Keyboard.PressAsync("Tab");
+        }
+
+        return AnalyzeKeyboardTrap(trapped: false, elementIdentifier: "");
+    }
+
+    internal static AccessibilityViolation? AnalyzeKeyboardTrap(bool trapped, string elementIdentifier)
+    {
+        if (!trapped)
+            return null;
+
+        return new AccessibilityViolation
+        {
+            RuleId = "keyboard-trap",
+            Impact = "critical",
+            Description = $"Keyboard focus is trapped — users cannot navigate past element '{elementIdentifier}' using Tab (WCAG 2.1.2)"
+        };
     }
 
     private static string LoadAxeScript()
