@@ -54,6 +54,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var tabindexViolations = await CheckTabindexAsync(page);
             violations.AddRange(tabindexViolations);
 
+            var focusViolations = await CheckFocusVisibleAsync(page);
+            violations.AddRange(focusViolations);
+
             return violations;
         }
         finally
@@ -413,6 +416,65 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckFocusVisibleAsync(IPage page)
+    {
+        var elementsJson = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const sel = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]';
+                const elements = Array.from(document.querySelectorAll(sel));
+                return elements.slice(0, 20).map(el => {
+                    el.focus();
+                    const style = window.getComputedStyle(el);
+                    return {
+                        tag: el.tagName.toLowerCase(),
+                        outlineWidth: style.outlineWidth,
+                        outlineStyle: style.outlineStyle,
+                        outlineColor: style.outlineColor,
+                        html: el.outerHTML.substring(0, 200)
+                    };
+                });
+            }
+        """);
+
+        var elements = new List<FocusInfo>();
+        foreach (var el in elementsJson.EnumerateArray())
+        {
+            elements.Add(new FocusInfo(
+                el.GetProperty("tag").GetString() ?? "",
+                el.GetProperty("outlineWidth").GetString() ?? "",
+                el.GetProperty("outlineStyle").GetString() ?? "",
+                el.GetProperty("outlineColor").GetString() ?? "",
+                el.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeFocusVisible(elements);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeFocusVisible(List<FocusInfo> elements)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var el in elements)
+        {
+            var noOutline = el.OutlineStyle == "none"
+                || el.OutlineWidth == "0px"
+                || el.OutlineStyle == "hidden";
+
+            if (noOutline)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "focus-visible-missing",
+                    Impact = "serious",
+                    Description = $"Element <{el.Tag}> has no visible focus indicator — keyboard users cannot see where focus is (WCAG 2.4.7)",
+                    HtmlElement = el.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -430,3 +492,4 @@ internal record SkipLinkInfo(string Href, string Text);
 internal record FormInputInfo(string Id, string Type, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
 internal record SvgInfo(string AriaLabel, string AriaLabelledBy, string Role, bool HasTitle, string Html);
 internal record TabindexInfo(string Tag, int Tabindex, bool IsInteractive, string Html);
+internal record FocusInfo(string Tag, string OutlineWidth, string OutlineStyle, string OutlineColor, string Html);
