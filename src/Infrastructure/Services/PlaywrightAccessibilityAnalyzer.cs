@@ -57,6 +57,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var focusViolations = await CheckFocusVisibleAsync(page);
             violations.AddRange(focusViolations);
 
+            var reflowViolation = await CheckReflowAsync(page);
+            if (reflowViolation is not null)
+                violations.Add(reflowViolation);
+
             var trapViolation = await CheckKeyboardTrapAsync(page);
             if (trapViolation is not null)
                 violations.Add(trapViolation);
@@ -477,6 +481,39 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         }
 
         return violations;
+    }
+
+    private static async Task<AccessibilityViolation?> CheckReflowAsync(IPage page)
+    {
+        await page.SetViewportSizeAsync(320, 256);
+        await page.WaitForLoadStateAsync(LoadState.Load);
+
+        var scrollInfo = await page.EvaluateAsync<JsonElement>("""
+            () => ({
+                scrollWidth: document.documentElement.scrollWidth,
+                clientWidth: document.documentElement.clientWidth
+            })
+        """);
+
+        var scrollWidth = scrollInfo.GetProperty("scrollWidth").GetInt32();
+        var clientWidth = scrollInfo.GetProperty("clientWidth").GetInt32();
+
+        return AnalyzeReflow(scrollWidth, clientWidth);
+    }
+
+    internal static AccessibilityViolation? AnalyzeReflow(int scrollWidth, int clientWidth)
+    {
+        if (scrollWidth > clientWidth)
+        {
+            return new AccessibilityViolation
+            {
+                RuleId = "reflow-horizontal-scroll",
+                Impact = "critical",
+                Description = "Page requires horizontal scrolling at 320px width — users with 400% zoom cannot access all content (WCAG 1.4.10)"
+            };
+        }
+
+        return null;
     }
 
     private static async Task<AccessibilityViolation?> CheckKeyboardTrapAsync(IPage page)
