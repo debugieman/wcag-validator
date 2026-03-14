@@ -68,6 +68,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var touchTargetViolations = await CheckTouchTargetSizeAsync(page);
             violations.AddRange(touchTargetViolations);
 
+            var reducedMotionViolation = await CheckReducedMotionAsync(page);
+            if (reducedMotionViolation is not null)
+                violations.Add(reducedMotionViolation);
+
             return violations;
         }
         finally
@@ -616,6 +620,51 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         }
 
         return violations;
+    }
+
+    private static async Task<AccessibilityViolation?> CheckReducedMotionAsync(IPage page)
+    {
+        var hasAnimations = await page.EvaluateAsync<bool>("""
+            () => {
+                const sheets = Array.from(document.styleSheets);
+                const hasAnimation = sheets.some(sheet => {
+                    try {
+                        return Array.from(sheet.cssRules).some(rule =>
+                            rule.cssText && (
+                                rule.cssText.includes('animation') ||
+                                rule.cssText.includes('transition')
+                            )
+                        );
+                    } catch { return false; }
+                });
+
+                const hasReducedMotion = sheets.some(sheet => {
+                    try {
+                        return Array.from(sheet.cssRules).some(rule =>
+                            rule.conditionText &&
+                            rule.conditionText.includes('prefers-reduced-motion')
+                        );
+                    } catch { return false; }
+                });
+
+                return hasAnimation && !hasReducedMotion;
+            }
+        """);
+
+        return AnalyzeReducedMotion(hasAnimations);
+    }
+
+    internal static AccessibilityViolation? AnalyzeReducedMotion(bool hasAnimationsWithoutReducedMotion)
+    {
+        if (!hasAnimationsWithoutReducedMotion)
+            return null;
+
+        return new AccessibilityViolation
+        {
+            RuleId = "animation-reduced-motion-missing",
+            Impact = "moderate",
+            Description = "Page uses animations or transitions but does not respect prefers-reduced-motion — users with vestibular disorders may be harmed (WCAG 2.3.3)"
+        };
     }
 
     private static string LoadAxeScript()
