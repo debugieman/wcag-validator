@@ -72,6 +72,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (reducedMotionViolation is not null)
                 violations.Add(reducedMotionViolation);
 
+            var langViolation = await CheckLangAttributeValidAsync(page);
+            if (langViolation is not null)
+                violations.Add(langViolation);
+
             return violations;
         }
         finally
@@ -665,6 +669,38 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             Impact = "moderate",
             Description = "Page uses animations or transitions but does not respect prefers-reduced-motion — users with vestibular disorders may be harmed (WCAG 2.3.3)"
         };
+    }
+
+    private static async Task<AccessibilityViolation?> CheckLangAttributeValidAsync(IPage page)
+    {
+        var lang = await page.EvaluateAsync<string>("() => document.documentElement.getAttribute('lang') || ''");
+        return AnalyzeLangAttributeValid(lang);
+    }
+
+    internal static AccessibilityViolation? AnalyzeLangAttributeValid(string lang)
+    {
+        if (string.IsNullOrWhiteSpace(lang))
+            return null; // missing lang is handled by axe-core html-has-lang rule
+
+        // BCP 47: primary language subtag is 2-3 lowercase letters, optionally followed by subtags
+        // Valid examples: "en", "pl", "en-US", "zh-Hans", "sr-Latn-RS"
+        // Invalid examples: "english", "Polish", "123", "e"
+        var primaryTag = lang.Split('-')[0];
+        var isValid = primaryTag.Length >= 2
+            && primaryTag.Length <= 3
+            && primaryTag.All(char.IsLetter);
+
+        if (!isValid)
+        {
+            return new AccessibilityViolation
+            {
+                RuleId = "lang-attribute-invalid",
+                Impact = "serious",
+                Description = $"The lang attribute value \"{lang}\" is not a valid BCP 47 language tag — screen readers may use the wrong language for text-to-speech (WCAG 3.1.1)"
+            };
+        }
+
+        return null;
     }
 
     private static string LoadAxeScript()
