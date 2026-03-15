@@ -79,6 +79,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var autocompleteViolations = await CheckAutocompleteAsync(page);
             violations.AddRange(autocompleteViolations);
 
+            var tableViolations = await CheckTableCaptionAsync(page);
+            violations.AddRange(tableViolations);
+
             return violations;
         }
         finally
@@ -758,6 +761,58 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckTableCaptionAsync(IPage page)
+    {
+        var tablesJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('table')).map(table => ({
+                hasCaption: !!table.querySelector('caption'),
+                hasSummary: !!table.getAttribute('summary'),
+                hasAriaLabel: !!table.getAttribute('aria-label'),
+                hasAriaLabelledBy: !!table.getAttribute('aria-labelledby'),
+                html: table.outerHTML.substring(0, 200)
+            }))
+        """);
+
+        var tables = new List<TableInfo>();
+        foreach (var table in tablesJson.EnumerateArray())
+        {
+            tables.Add(new TableInfo(
+                table.GetProperty("hasCaption").GetBoolean(),
+                table.GetProperty("hasSummary").GetBoolean(),
+                table.GetProperty("hasAriaLabel").GetBoolean(),
+                table.GetProperty("hasAriaLabelledBy").GetBoolean(),
+                table.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeTableCaption(tables);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeTableCaption(List<TableInfo> tables)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var table in tables)
+        {
+            var hasAccessibleName = table.HasCaption
+                || table.HasSummary
+                || table.HasAriaLabel
+                || table.HasAriaLabelledBy;
+
+            if (!hasAccessibleName)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "table-missing-caption",
+                    Impact = "moderate",
+                    Description = "Data table has no caption or accessible name — screen reader users cannot understand the table's purpose without reading all its content (WCAG 1.3.1)",
+                    HtmlElement = table.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -778,3 +833,4 @@ internal record TabindexInfo(string Tag, int Tabindex, bool IsInteractive, strin
 internal record FocusInfo(string Tag, string OutlineWidth, string OutlineStyle, string OutlineColor, string Html);
 internal record TouchTargetInfo(string Tag, double Width, double Height, string Html);
 internal record AutocompleteInfo(string Autocomplete, string Name, string Html);
+internal record TableInfo(bool HasCaption, bool HasSummary, bool HasAriaLabel, bool HasAriaLabelledBy, string Html);
