@@ -76,6 +76,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (langViolation is not null)
                 violations.Add(langViolation);
 
+            var autocompleteViolations = await CheckAutocompleteAsync(page);
+            violations.AddRange(autocompleteViolations);
+
             return violations;
         }
         finally
@@ -703,6 +706,58 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return null;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckAutocompleteAsync(IPage page)
+    {
+        var inputsJson = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const personalTypes = ['name', 'email', 'tel', 'address', 'city', 'country', 'zip', 'postal'];
+                const personalNames = ['name', 'email', 'phone', 'tel', 'address', 'city', 'country', 'zip', 'postal', 'firstname', 'lastname', 'surname'];
+                return Array.from(document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input:not([type])'))
+                    .filter(i => {
+                        const name = (i.name || i.id || i.placeholder || '').toLowerCase();
+                        return personalNames.some(p => name.includes(p));
+                    })
+                    .map(i => ({
+                        autocomplete: i.getAttribute('autocomplete') || '',
+                        name: i.name || i.id || '',
+                        html: i.outerHTML.substring(0, 200)
+                    }));
+            }
+        """);
+
+        var inputs = new List<AutocompleteInfo>();
+        foreach (var input in inputsJson.EnumerateArray())
+        {
+            inputs.Add(new AutocompleteInfo(
+                input.GetProperty("autocomplete").GetString() ?? "",
+                input.GetProperty("name").GetString() ?? "",
+                input.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeAutocomplete(inputs);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeAutocomplete(List<AutocompleteInfo> inputs)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var input in inputs)
+        {
+            if (string.IsNullOrWhiteSpace(input.Autocomplete) || input.Autocomplete == "off")
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "autocomplete-missing",
+                    Impact = "serious",
+                    Description = $"Input field '{input.Name}' collects personal data but is missing the autocomplete attribute — users with cognitive or motor impairments rely on browser autofill (WCAG 1.3.5)",
+                    HtmlElement = input.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -722,3 +777,4 @@ internal record SvgInfo(string AriaLabel, string AriaLabelledBy, string Role, bo
 internal record TabindexInfo(string Tag, int Tabindex, bool IsInteractive, string Html);
 internal record FocusInfo(string Tag, string OutlineWidth, string OutlineStyle, string OutlineColor, string Html);
 internal record TouchTargetInfo(string Tag, double Width, double Height, string Html);
+internal record AutocompleteInfo(string Autocomplete, string Name, string Html);
