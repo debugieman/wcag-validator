@@ -86,6 +86,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (pageTitleViolation is not null)
                 violations.Add(pageTitleViolation);
 
+            var selectTextareaViolations = await CheckSelectTextareaLabelsAsync(page);
+            violations.AddRange(selectTextareaViolations);
+
             return violations;
         }
         finally
@@ -844,6 +847,58 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return null;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckSelectTextareaLabelsAsync(IPage page)
+    {
+        var elementsJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('select, textarea')).map(el => ({
+                tag: el.tagName.toLowerCase(),
+                id: el.id || '',
+                ariaLabel: el.getAttribute('aria-label') || '',
+                ariaLabelledBy: el.getAttribute('aria-labelledby') || '',
+                hasLabel: el.id ? !!document.querySelector(`label[for="${el.id}"]`) : false,
+                html: el.outerHTML.substring(0, 200)
+            }))
+        """);
+
+        var elements = new List<SelectTextareaInfo>();
+        foreach (var el in elementsJson.EnumerateArray())
+        {
+            elements.Add(new SelectTextareaInfo(
+                el.GetProperty("tag").GetString() ?? "",
+                el.GetProperty("ariaLabel").GetString() ?? "",
+                el.GetProperty("ariaLabelledBy").GetString() ?? "",
+                el.GetProperty("hasLabel").GetBoolean(),
+                el.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeSelectTextareaLabels(elements);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeSelectTextareaLabels(List<SelectTextareaInfo> elements)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var el in elements)
+        {
+            var hasAccessibleName = el.HasLabel
+                || !string.IsNullOrWhiteSpace(el.AriaLabel)
+                || !string.IsNullOrWhiteSpace(el.AriaLabelledBy);
+
+            if (!hasAccessibleName)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "select-textarea-missing-label",
+                    Impact = "critical",
+                    Description = $"<{el.Tag}> element has no associated label, aria-label, or aria-labelledby — screen reader users cannot identify its purpose (WCAG 1.3.1)",
+                    HtmlElement = el.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -865,3 +920,4 @@ internal record FocusInfo(string Tag, string OutlineWidth, string OutlineStyle, 
 internal record TouchTargetInfo(string Tag, double Width, double Height, string Html);
 internal record AutocompleteInfo(string Autocomplete, string Name, string Html);
 internal record TableInfo(bool HasCaption, bool HasSummary, bool HasAriaLabel, bool HasAriaLabelledBy, string Html);
+internal record SelectTextareaInfo(string Tag, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
