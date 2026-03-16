@@ -92,6 +92,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var fieldsetViolations = await CheckFieldsetLegendAsync(page);
             violations.AddRange(fieldsetViolations);
 
+            var ariaLiveViolation = await CheckAriaLiveAsync(page);
+            if (ariaLiveViolation is not null)
+                violations.Add(ariaLiveViolation);
+
             return violations;
         }
         finally
@@ -951,6 +955,48 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         }
 
         return violations;
+    }
+
+    private static async Task<AccessibilityViolation?> CheckAriaLiveAsync(IPage page)
+    {
+        var result = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const alertRoles = ['alert', 'status', 'log', 'marquee', 'timer'];
+                const hasAlertElements = document.querySelectorAll(
+                    '[role="alert"], [role="status"], [role="log"], .alert, .error, .notification, .toast, .snackbar'
+                ).length > 0;
+
+                const hasAriaLive = document.querySelectorAll('[aria-live]').length > 0;
+                const hasRoleWithImplicitLive = document.querySelectorAll(
+                    '[role="alert"], [role="status"], [role="log"]'
+                ).length > 0;
+
+                return {
+                    hasAlertElements,
+                    hasAriaLive,
+                    hasRoleWithImplicitLive
+                };
+            }
+        """);
+
+        var hasAlertElements = result.GetProperty("hasAlertElements").GetBoolean();
+        var hasAriaLive = result.GetProperty("hasAriaLive").GetBoolean();
+        var hasRoleWithImplicitLive = result.GetProperty("hasRoleWithImplicitLive").GetBoolean();
+
+        return AnalyzeAriaLive(hasAlertElements, hasAriaLive || hasRoleWithImplicitLive);
+    }
+
+    internal static AccessibilityViolation? AnalyzeAriaLive(bool hasAlertElements, bool hasLiveRegion)
+    {
+        if (!hasAlertElements || hasLiveRegion)
+            return null;
+
+        return new AccessibilityViolation
+        {
+            RuleId = "aria-live-missing",
+            Impact = "serious",
+            Description = "Page contains alert or notification elements but no aria-live regions — dynamic status messages are invisible to screen reader users (WCAG 4.1.3)"
+        };
     }
 
     private static string LoadAxeScript()
