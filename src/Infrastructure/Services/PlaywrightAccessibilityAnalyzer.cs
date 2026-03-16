@@ -89,6 +89,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var selectTextareaViolations = await CheckSelectTextareaLabelsAsync(page);
             violations.AddRange(selectTextareaViolations);
 
+            var fieldsetViolations = await CheckFieldsetLegendAsync(page);
+            violations.AddRange(fieldsetViolations);
+
             return violations;
         }
         finally
@@ -899,6 +902,57 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         return violations;
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckFieldsetLegendAsync(IPage page)
+    {
+        var fieldsetsJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('fieldset')).map(fs => ({
+                hasLegend: !!fs.querySelector('legend'),
+                legendText: (fs.querySelector('legend')?.textContent || '').trim(),
+                hasAriaLabel: !!fs.getAttribute('aria-label'),
+                hasAriaLabelledBy: !!fs.getAttribute('aria-labelledby'),
+                html: fs.outerHTML.substring(0, 200)
+            }))
+        """);
+
+        var fieldsets = new List<FieldsetInfo>();
+        foreach (var fs in fieldsetsJson.EnumerateArray())
+        {
+            fieldsets.Add(new FieldsetInfo(
+                fs.GetProperty("hasLegend").GetBoolean(),
+                fs.GetProperty("legendText").GetString() ?? "",
+                fs.GetProperty("hasAriaLabel").GetBoolean(),
+                fs.GetProperty("hasAriaLabelledBy").GetBoolean(),
+                fs.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeFieldsetLegend(fieldsets);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeFieldsetLegend(List<FieldsetInfo> fieldsets)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var fs in fieldsets)
+        {
+            var hasAccessibleName = (fs.HasLegend && !string.IsNullOrWhiteSpace(fs.LegendText))
+                || fs.HasAriaLabel
+                || fs.HasAriaLabelledBy;
+
+            if (!hasAccessibleName)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "fieldset-missing-legend",
+                    Impact = "serious",
+                    Description = "A <fieldset> grouping related form controls has no <legend> or accessible name — screen reader users cannot understand what the group represents (WCAG 1.3.1)",
+                    HtmlElement = fs.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -921,3 +975,4 @@ internal record TouchTargetInfo(string Tag, double Width, double Height, string 
 internal record AutocompleteInfo(string Autocomplete, string Name, string Html);
 internal record TableInfo(bool HasCaption, bool HasSummary, bool HasAriaLabel, bool HasAriaLabelledBy, string Html);
 internal record SelectTextareaInfo(string Tag, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
+internal record FieldsetInfo(bool HasLegend, string LegendText, bool HasAriaLabel, bool HasAriaLabelledBy, string Html);
