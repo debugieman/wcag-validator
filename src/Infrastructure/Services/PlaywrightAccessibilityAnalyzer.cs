@@ -82,6 +82,10 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var tableViolations = await CheckTableCaptionAsync(page);
             violations.AddRange(tableViolations);
 
+            var pageTitleViolation = await CheckPageTitleDescriptiveAsync(page);
+            if (pageTitleViolation is not null)
+                violations.Add(pageTitleViolation);
+
             return violations;
         }
         finally
@@ -811,6 +815,33 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         }
 
         return violations;
+    }
+
+    private static async Task<AccessibilityViolation?> CheckPageTitleDescriptiveAsync(IPage page)
+    {
+        var title = await page.EvaluateAsync<string>("() => document.title || ''");
+        return AnalyzePageTitleDescriptive(title);
+    }
+
+    internal static AccessibilityViolation? AnalyzePageTitleDescriptive(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return null; // missing title handled by axe-core document-title rule
+
+        var genericTitles = new[] { "home", "index", "untitled", "page", "new page", "welcome", "default" };
+        var normalized = title.Trim().ToLowerInvariant();
+
+        if (normalized.Length < 4 || genericTitles.Any(g => normalized == g))
+        {
+            return new AccessibilityViolation
+            {
+                RuleId = "page-title-not-descriptive",
+                Impact = "moderate",
+                Description = $"Page title \"{title}\" is too generic — titles should describe the page content so users can distinguish tabs and navigate history (WCAG 2.4.2)"
+            };
+        }
+
+        return null;
     }
 
     private static string LoadAxeScript()
