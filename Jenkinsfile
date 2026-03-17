@@ -20,6 +20,17 @@ pipeline {
               }
           }
 
+          stage('Test Backend') {
+              agent {
+                  docker {
+                      image 'mcr.microsoft.com/dotnet/sdk:10.0'
+                  }
+              }
+              steps {
+                  sh 'dotnet test src/Tests/WcagAnalyzer.Tests.csproj --logger "console;verbosity=minimal"'
+              }
+          }
+
           stage('Build Frontend') {
               agent {
                   docker {
