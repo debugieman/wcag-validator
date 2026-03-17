@@ -96,6 +96,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             if (ariaLiveViolation is not null)
                 violations.Add(ariaLiveViolation);
 
+            var focusContextViolations = await CheckFocusContextChangeAsync(page);
+            violations.AddRange(focusContextViolations);
+
             return violations;
         }
         finally
@@ -999,6 +1002,55 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         };
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckFocusContextChangeAsync(IPage page)
+    {
+        var initialUrl = page.Url;
+        var focusableSelectors = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex=\"0\"]";
+
+        var elementsJson = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const sel = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex="0"]';
+                return Array.from(document.querySelectorAll(sel)).slice(0, 15).map(el => ({
+                    html: el.outerHTML.substring(0, 200)
+                }));
+            }
+        """);
+
+        var violations = new List<FocusContextInfo>();
+
+        var index = 0;
+        foreach (var el in elementsJson.EnumerateArray())
+        {
+            var html = el.GetProperty("html").GetString() ?? "";
+
+            var urlBefore = page.Url;
+            await page.EvaluateAsync($"() => document.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex=\"0\"]')[{index}]?.focus()");
+            await page.WaitForTimeoutAsync(200);
+            var urlAfter = page.Url;
+
+            if (urlBefore != urlAfter)
+            {
+                violations.Add(new FocusContextInfo(html, urlBefore, urlAfter));
+                await page.GotoAsync(urlBefore);
+            }
+
+            index++;
+        }
+
+        return AnalyzeFocusContextChange(violations);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeFocusContextChange(List<FocusContextInfo> items)
+    {
+        return items.Select(item => new AccessibilityViolation
+        {
+            RuleId = "focus-causes-context-change",
+            Impact = "serious",
+            Description = $"Focusing an element triggered a page navigation from \"{item.UrlBefore}\" to \"{item.UrlAfter}\" — context changes on focus disorient keyboard users (WCAG 3.2.1)",
+            HtmlElement = item.Html
+        }).ToList();
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -1022,3 +1074,4 @@ internal record AutocompleteInfo(string Autocomplete, string Name, string Html);
 internal record TableInfo(bool HasCaption, bool HasSummary, bool HasAriaLabel, bool HasAriaLabelledBy, string Html);
 internal record SelectTextareaInfo(string Tag, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
 internal record FieldsetInfo(bool HasLegend, string LegendText, bool HasAriaLabel, bool HasAriaLabelledBy, string Html);
+internal record FocusContextInfo(string Html, string UrlBefore, string UrlAfter);
