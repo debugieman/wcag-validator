@@ -99,6 +99,9 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
             var focusContextViolations = await CheckFocusContextChangeAsync(page);
             violations.AddRange(focusContextViolations);
 
+            var errorIdentificationViolations = await CheckErrorIdentificationAsync(page);
+            violations.AddRange(errorIdentificationViolations);
+
             return violations;
         }
         finally
@@ -1051,6 +1054,59 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         }).ToList();
     }
 
+    private static async Task<List<AccessibilityViolation>> CheckErrorIdentificationAsync(IPage page)
+    {
+        var inputsJson = await page.EvaluateAsync<JsonElement>("""
+            () => Array.from(document.querySelectorAll('input[required], select[required], textarea[required], [aria-required="true"]'))
+                .map(el => ({
+                    tag: el.tagName.toLowerCase(),
+                    ariaInvalid: el.getAttribute('aria-invalid') || '',
+                    ariaDescribedBy: el.getAttribute('aria-describedby') || '',
+                    id: el.id || '',
+                    hasErrorMessage: !!el.getAttribute('aria-describedby') &&
+                        !!document.getElementById(el.getAttribute('aria-describedby') || ''),
+                    html: el.outerHTML.substring(0, 200)
+                }))
+        """);
+
+        var inputs = new List<RequiredInputInfo>();
+        foreach (var input in inputsJson.EnumerateArray())
+        {
+            inputs.Add(new RequiredInputInfo(
+                input.GetProperty("tag").GetString() ?? "",
+                input.GetProperty("ariaInvalid").GetString() ?? "",
+                input.GetProperty("ariaDescribedBy").GetString() ?? "",
+                input.GetProperty("hasErrorMessage").GetBoolean(),
+                input.GetProperty("html").GetString() ?? ""));
+        }
+
+        return AnalyzeErrorIdentification(inputs);
+    }
+
+    internal static List<AccessibilityViolation> AnalyzeErrorIdentification(List<RequiredInputInfo> inputs)
+    {
+        var violations = new List<AccessibilityViolation>();
+
+        foreach (var input in inputs)
+        {
+            var isMarkedInvalid = input.AriaInvalid == "true";
+            var hasLinkedErrorMessage = input.HasErrorMessage;
+
+            if (isMarkedInvalid && !hasLinkedErrorMessage)
+            {
+                violations.Add(new AccessibilityViolation
+                {
+                    RuleId = "error-missing-description",
+                    Impact = "serious",
+                    Description = $"<{input.Tag}> is marked aria-invalid=\"true\" but has no aria-describedby pointing to an error message — screen reader users know the field is wrong but not why (WCAG 3.3.1)",
+                    HtmlElement = input.Html
+                });
+            }
+        }
+
+        return violations;
+    }
+
     private static string LoadAxeScript()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -1075,3 +1131,4 @@ internal record TableInfo(bool HasCaption, bool HasSummary, bool HasAriaLabel, b
 internal record SelectTextareaInfo(string Tag, string AriaLabel, string AriaLabelledBy, bool HasLabel, string Html);
 internal record FieldsetInfo(bool HasLegend, string LegendText, bool HasAriaLabel, bool HasAriaLabelledBy, string Html);
 internal record FocusContextInfo(string Html, string UrlBefore, string UrlAfter);
+internal record RequiredInputInfo(string Tag, string AriaInvalid, string AriaDescribedBy, bool HasErrorMessage, string Html);
