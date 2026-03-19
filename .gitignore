@@ -60,3 +60,7 @@ docs/
 *.bak
 *.tmp
 .angular/cache/
+
+# ngrok
+ngrok
+ngrok-v3-stable-darwin-arm64.zip
