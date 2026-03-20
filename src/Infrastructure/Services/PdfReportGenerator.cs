@@ -25,6 +25,35 @@ public class PdfReportGenerator : IPdfReportGenerator
         ["minor"]    = "#388E3C"
     };
 
+    private static readonly Dictionary<string, string> RuleDescriptions = new()
+    {
+        ["color-contrast"]                  = "Text is too low-contrast against its background. Affects ~8% of users with visual impairments and anyone reading in bright sunlight.",
+        ["image-alt"]                       = "Images have no alternative text. Screen readers cannot describe them to blind or visually impaired users.",
+        ["svg-image-missing-alt"]           = "SVG graphics have no accessible label. Assistive technologies will skip or misread these images.",
+        ["button-name"]                     = "Buttons have no descriptive label. Users relying on screen readers cannot tell what a button does.",
+        ["link-name"]                       = "Links have no descriptive text. 'Click here' or icon-only links are meaningless to screen reader users.",
+        ["input-missing-label"]             = "Form fields have no labels. Users with screen readers cannot tell what information is expected.",
+        ["select-textarea-missing-label"]   = "Dropdown menus or text areas have no labels, making forms inaccessible to assistive technology users.",
+        ["label"]                           = "Form inputs are missing programmatic labels required by screen readers.",
+        ["html-has-lang"]                   = "The page has no language declaration. Screen readers cannot select the correct voice or pronunciation.",
+        ["heading-level-skipped"]           = "Heading levels jump (e.g. H1 → H3). This breaks the logical structure of the page for screen reader users.",
+        ["heading-first-not-h1"]            = "The first heading on the page is not H1. This confuses screen readers and search engines.",
+        ["skip-navigation-missing"]         = "There is no 'Skip to content' link. Keyboard-only users must tab through every menu item on every page.",
+        ["landmark-one-main"]               = "The page has no main landmark region. Screen reader users cannot jump directly to the main content.",
+        ["landmark-unique"]                 = "Multiple identical landmark regions exist without labels, making navigation confusing.",
+        ["region"]                          = "Page content is not organised into landmark regions (header, main, footer). Structural navigation is impossible.",
+        ["list"]                            = "List elements are used incorrectly. This disrupts how screen readers announce list content.",
+        ["table-missing-caption"]           = "Data tables have no caption or summary. Screen reader users cannot understand the table's purpose without reading all content first.",
+        ["aria-allowed-role"]               = "ARIA roles are applied to elements where they are not permitted, causing unpredictable behaviour for assistive technologies.",
+        ["focus-visible-missing"]           = "Keyboard focus is not visually visible. Keyboard-only users cannot see which element they are interacting with.",
+        ["interactive-not-focusable"]       = "Interactive elements cannot be reached by keyboard. Users who cannot use a mouse are completely locked out.",
+        ["keyboard-trap"]                   = "Keyboard focus gets trapped inside a component. Users who rely on the keyboard cannot escape or navigate away.",
+        ["reflow-horizontal-scroll"]        = "The page requires horizontal scrolling at 320px width. Users with low vision who zoom in will struggle to read the content.",
+        ["touch-target-too-small"]          = "Tap targets (buttons, links) are too small. Users with motor impairments or large fingers will frequently mis-tap.",
+        ["animation-reduced-motion-missing"]= "Animations do not respect the user's 'reduce motion' system preference. This can trigger symptoms in users with vestibular disorders.",
+        ["table-missing-caption"]           = "Data tables have no caption. Users with screen readers cannot identify the table's purpose.",
+    };
+
     public byte[] Generate(GetAnalysisByIdResult analysis)
     {
         QuestPDF.Settings.License = LicenseType.Community;
@@ -93,6 +122,10 @@ public class PdfReportGenerator : IPdfReportGenerator
                 return;
             }
 
+            col.Item().Element(c => ComposeTopPriorities(c, analysis.Results.ToList()));
+
+            col.Item().PaddingTop(20);
+
             foreach (var (impact, label) in ImpactOrder)
             {
                 if (!grouped.TryGetValue(impact, out var items) || items.Count == 0)
@@ -101,6 +134,8 @@ public class PdfReportGenerator : IPdfReportGenerator
                 col.Item().Element(c => ComposeSection(c, label, impact, items));
                 col.Item().PaddingTop(16);
             }
+
+            col.Item().Element(c => ComposeRecommendations(c, analysis.Results.ToList()));
         });
     }
 
@@ -284,6 +319,100 @@ public class PdfReportGenerator : IPdfReportGenerator
                             .Text($"More info: {group.HelpUrl}")
                             .FontSize(8).FontColor("#1565C0").Underline();
                     }
+                });
+            }
+        });
+    }
+
+    private static void ComposeTopPriorities(IContainer container, List<AnalysisResultDto> results)
+    {
+        var top3 = results
+            .GroupBy(r => r.RuleId)
+            .Select(g => new { RuleId = g.Key, Impact = g.First().Impact, Count = g.Count() })
+            .OrderBy(g => ImpactOrder.Keys.ToList().IndexOf(g.Impact))
+            .ThenByDescending(g => g.Count)
+            .Take(3)
+            .ToList();
+
+        if (top3.Count == 0) return;
+
+        container.Border(1).BorderColor("#CFD8DC").Padding(14).Column(col =>
+        {
+            col.Item().Text("Top Priorities").FontSize(13).Bold().FontColor("#1A237E");
+            col.Item().PaddingTop(4).Text("Fix these first for the biggest accessibility improvement.")
+                .FontSize(9).FontColor("#546E7A");
+
+            col.Item().PaddingTop(10);
+
+            foreach (var (item, index) in top3.Select((x, i) => (x, i)))
+            {
+                var impactColor = ImpactColors.GetValueOrDefault(item.Impact, "#546E7A");
+                var friendlyDesc = RuleDescriptions.GetValueOrDefault(item.RuleId, item.RuleId);
+
+                col.Item().PaddingBottom(8).Row(row =>
+                {
+                    row.ConstantItem(24).AlignMiddle().AlignCenter()
+                        .Background(impactColor).Padding(4)
+                        .Text($"{index + 1}").FontSize(10).Bold().FontColor(Colors.White);
+
+                    row.ConstantItem(8);
+
+                    row.RelativeItem().Column(inner =>
+                    {
+                        inner.Item().Text(text =>
+                        {
+                            text.Span(item.RuleId).FontSize(10).Bold().FontColor("#263238");
+                            text.Span($"  ×{item.Count}").FontSize(9).FontColor(impactColor);
+                        });
+                        inner.Item().PaddingTop(2).Text(friendlyDesc)
+                            .FontSize(9).FontColor("#546E7A");
+                    });
+                });
+            }
+        });
+    }
+
+    private static void ComposeRecommendations(IContainer container, List<AnalysisResultDto> results)
+    {
+        var uniqueRules = results
+            .GroupBy(r => r.RuleId)
+            .Where(g => RuleDescriptions.ContainsKey(g.Key))
+            .Select(g => new { RuleId = g.Key, Impact = g.First().Impact, Count = g.Count() })
+            .OrderBy(g => ImpactOrder.Keys.ToList().IndexOf(g.Impact))
+            .ToList();
+
+        if (uniqueRules.Count == 0) return;
+
+        container.Border(1).BorderColor("#CFD8DC").Padding(14).Column(col =>
+        {
+            col.Item().Text("What These Issues Mean for Your Business")
+                .FontSize(13).Bold().FontColor("#1A237E");
+            col.Item().PaddingTop(4).Text(
+                "Below is a plain-language explanation of each issue found on your site and why it matters to your visitors.")
+                .FontSize(9).FontColor("#546E7A");
+
+            col.Item().PaddingTop(10);
+
+            foreach (var (rule, index) in uniqueRules.Select((r, i) => (r, i)))
+            {
+                var bg = index % 2 == 0 ? "#FAFAFA" : "#FFFFFF";
+                var impactColor = ImpactColors.GetValueOrDefault(rule.Impact, "#546E7A");
+                var friendlyDesc = RuleDescriptions[rule.RuleId];
+
+                col.Item().Background(bg).BorderBottom(1).BorderColor("#ECEFF1").Padding(8).Row(row =>
+                {
+                    row.ConstantItem(6).Background(impactColor);
+                    row.ConstantItem(8);
+                    row.RelativeItem().Column(inner =>
+                    {
+                        inner.Item().Text(text =>
+                        {
+                            text.Span(rule.RuleId).FontSize(9).Bold().FontColor("#263238");
+                            text.Span($"  ×{rule.Count} occurrences").FontSize(8).FontColor(impactColor);
+                        });
+                        inner.Item().PaddingTop(2).Text(friendlyDesc)
+                            .FontSize(9).FontColor("#546E7A");
+                    });
                 });
             }
         });
