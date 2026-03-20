@@ -224,38 +224,64 @@ public class PdfReportGenerator : IPdfReportGenerator
     private static void ComposeSection(IContainer container, string label, string impact, List<AnalysisResultDto> items)
     {
         var color = ImpactColors.GetValueOrDefault(impact, "#546E7A");
+        var grouped = items
+            .GroupBy(r => r.RuleId)
+            .Select(g => new
+            {
+                RuleId      = g.Key,
+                Count       = g.Count(),
+                Description = g.First().Description,
+                HelpUrl     = g.First().HelpUrl,
+                Examples    = g.Where(r => !string.IsNullOrWhiteSpace(r.HtmlElement))
+                               .Take(3)
+                               .Select(r => r.HtmlElement!)
+                               .ToList()
+            })
+            .ToList();
 
         container.Column(col =>
         {
             col.Item().Background(color).Padding(8).Row(row =>
             {
-                row.RelativeItem().Text($"{label} Issues ({items.Count})")
+                row.RelativeItem().Text($"{label} Issues ({grouped.Count} unique rules, {items.Count} occurrences)")
                     .FontSize(11).Bold().FontColor(Colors.White);
             });
 
-            foreach (var (item, index) in items.Select((v, i) => (v, i)))
+            foreach (var (group, index) in grouped.Select((g, i) => (g, i)))
             {
                 var bg = index % 2 == 0 ? "#FAFAFA" : "#FFFFFF";
 
                 col.Item().Background(bg).BorderBottom(1).BorderColor("#ECEFF1").Padding(10).Column(inner =>
                 {
-                    inner.Item().Text(item.RuleId).FontSize(10).Bold().FontColor("#263238");
+                    inner.Item().Row(row =>
+                    {
+                        row.RelativeItem().Text(group.RuleId).FontSize(10).Bold().FontColor("#263238");
+                        row.ConstantItem(80).AlignRight()
+                            .Text($"×{group.Count} occurrences")
+                            .FontSize(8).FontColor(color);
+                    });
 
-                    inner.Item().PaddingTop(3).Text(item.Description)
+                    inner.Item().PaddingTop(3).Text(group.Description)
                         .FontSize(9).FontColor("#546E7A");
 
-                    if (!string.IsNullOrWhiteSpace(item.HtmlElement))
+                    if (group.Examples.Count > 0)
                     {
-                        inner.Item().PaddingTop(5)
-                            .Background("#F5F5F5").Padding(6)
-                            .Text(TruncateHtml(item.HtmlElement))
-                            .FontSize(8).FontColor("#37474F");
+                        inner.Item().PaddingTop(5).Text($"Examples ({group.Examples.Count} of {group.Count}):")
+                            .FontSize(8).FontColor("#90A4AE");
+
+                        foreach (var example in group.Examples)
+                        {
+                            inner.Item().PaddingTop(3)
+                                .Background("#F5F5F5").Padding(6)
+                                .Text(TruncateHtml(example))
+                                .FontSize(8).FontColor("#37474F");
+                        }
                     }
 
-                    if (!string.IsNullOrWhiteSpace(item.HelpUrl))
+                    if (!string.IsNullOrWhiteSpace(group.HelpUrl))
                     {
                         inner.Item().PaddingTop(4)
-                            .Text($"More info: {item.HelpUrl}")
+                            .Text($"More info: {group.HelpUrl}")
                             .FontSize(8).FontColor("#1565C0").Underline();
                     }
                 });
