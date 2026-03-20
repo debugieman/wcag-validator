@@ -28,6 +28,10 @@
     @if (message()) {
       <p class="message" [class.error]="messageType() === 'error'">{{ message() }}</p>
     }
+
+    @if (analysisId()) {
+      <p><a href="https://localhost:7268/api/analysis/{{ analysisId() }}/report" target="_blank">Download PDF report (dev)</a></p>
+    }
   </div>
 </main>
 
