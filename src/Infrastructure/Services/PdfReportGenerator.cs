@@ -80,6 +80,9 @@ public class PdfReportGenerator : IPdfReportGenerator
 
     private static void ComposeHeader(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
     {
+        var score = CalculateScore(analysis.Results.ToList());
+        var scoreColor = score >= 80 ? "#388E3C" : score >= 50 ? "#F57C00" : "#D32F2F";
+
         container.Column(col =>
         {
             col.Item().Row(row =>
@@ -96,10 +99,46 @@ public class PdfReportGenerator : IPdfReportGenerator
                     inner.Item().Text($"Generated: {analysis.CompletedAt?.ToString("dd MMM yyyy HH:mm") ?? DateTime.UtcNow.ToString("dd MMM yyyy HH:mm")} UTC")
                         .FontSize(9).FontColor("#90A4AE");
                 });
+
+                row.ConstantItem(80).AlignRight().AlignMiddle().Column(scoreCol =>
+                {
+                    scoreCol.Item().AlignCenter().Text($"{score}/100")
+                        .FontSize(22).Bold().FontColor(scoreColor);
+                    scoreCol.Item().AlignCenter().Text("Accessibility Score")
+                        .FontSize(7).FontColor("#90A4AE");
+                });
             });
 
-            col.Item().PaddingTop(8).LineHorizontal(1).LineColor("#1A237E");
+            col.Item().PaddingTop(4).Column(bar =>
+            {
+                var filled = score;
+                bar.Item().Row(row =>
+                {
+                    if (filled > 0)
+                        row.RelativeItem(filled).Height(6).Background(scoreColor);
+                    if (filled < 100)
+                        row.RelativeItem(100 - filled).Height(6).Background("#ECEFF1");
+                });
+            });
+
+            col.Item().PaddingTop(4).LineHorizontal(1).LineColor("#1A237E");
         });
+    }
+
+    private static int CalculateScore(List<AnalysisResultDto> results)
+    {
+        var deductions = results
+            .GroupBy(r => r.RuleId)
+            .Sum(g => g.First().Impact switch
+            {
+                "critical" => 10,
+                "serious"  => 7,
+                "moderate" => 4,
+                "minor"    => 1,
+                _          => 0
+            });
+
+        return Math.Max(0, 100 - deductions);
     }
 
     private static void ComposeContent(IContainer container, GetAnalysisByIdResult analysis, Dictionary<string, List<AnalysisResultDto>> grouped)
