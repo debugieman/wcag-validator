@@ -1,8 +1,6 @@
 #!/bin/bash
-echo "Starting WcagAnalyzer..."
-echo "Backend: http://localhost:5042"
-echo "Frontend: http://localhost:4200"
-echo ""
-
+echo "Starting backend..."
 dotnet run --project src/Api/WcagAnalyzer.Api.csproj &
-cd src/frontend && npx ng serve
+
+echo "Starting frontend..."
+cd src/frontend && npm start
