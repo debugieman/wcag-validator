@@ -307,7 +307,7 @@ public class PdfReportGenerator : IPdfReportGenerator
                 Description = g.First().Description,
                 HelpUrl     = g.First().HelpUrl,
                 Examples    = g.Where(r => !string.IsNullOrWhiteSpace(r.HtmlElement))
-                               .Take(3)
+                               .Take(2)
                                .Select(r => r.HtmlElement!)
                                .ToList()
             })
@@ -338,7 +338,14 @@ public class PdfReportGenerator : IPdfReportGenerator
                     inner.Item().PaddingTop(3).Text(group.Description)
                         .FontSize(9).FontColor("#546E7A");
 
-                    if (group.Examples.Count > 0)
+                    if (group.Count > 5)
+                    {
+                        inner.Item().PaddingTop(5)
+                            .Background("#FFF8E1").Padding(6)
+                            .Text($"⚠ This issue appears {group.Count} times on your page. Focus on fixing the pattern rather than individual elements.")
+                            .FontSize(8).FontColor("#F57C00");
+                    }
+                    else if (group.Examples.Count > 0)
                     {
                         inner.Item().PaddingTop(5).Text($"Examples ({group.Examples.Count} of {group.Count}):")
                             .FontSize(8).FontColor("#90A4AE");
