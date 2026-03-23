@@ -2,6 +2,12 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "kill-ports",
+      "type": "shell",
+      "command": "lsof -ti:5042,7268,4200 | xargs kill -9 2>/dev/null; exit 0",
+      "problemMatcher": []
+    },
+    {
       "label": "build-api",
       "command": "dotnet",
       "type": "process",
@@ -10,6 +16,7 @@
         "${workspaceFolder}/WcagAnalyzer.sln",
         "/property:GenerateFullPaths=true"
       ],
+      "dependsOn": "kill-ports",
       "problemMatcher": "$msCompile"
     }
   ]
