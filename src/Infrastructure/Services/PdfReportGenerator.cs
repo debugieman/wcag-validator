@@ -69,6 +69,15 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
+                page.Content().Element(c => ComposeCoverPage(c, logoBytes, analysis));
+            });
+
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(40);
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
+
                 page.Header().Element(c => ComposeHeader(c, logoBytes, analysis));
                 page.Content().Element(c => ComposeContent(c, analysis, grouped));
                 page.Footer().Element(ComposeFooter);
@@ -76,6 +85,85 @@ public class PdfReportGenerator : IPdfReportGenerator
         });
 
         return document.GeneratePdf();
+    }
+
+    private static void ComposeCoverPage(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
+    {
+        var score = CalculateScore(analysis.Results.ToList());
+        var scoreColor = score >= 80 ? "#388E3C" : score >= 50 ? "#F57C00" : "#D32F2F";
+        var scoreLabel = score >= 80 ? "Good" : score >= 50 ? "Needs Improvement" : "Poor";
+
+        var critical = analysis.Results.Count(r => r.Impact == "critical");
+        var serious  = analysis.Results.Count(r => r.Impact == "serious");
+        var moderate = analysis.Results.Count(r => r.Impact == "moderate");
+        var minor    = analysis.Results.Count(r => r.Impact == "minor");
+
+        container.Column(col =>
+        {
+            col.Item().Height(80);
+
+            if (logoBytes is not null)
+                col.Item().AlignCenter().Width(120).Image(logoBytes);
+
+            col.Item().Height(40);
+
+            col.Item().AlignCenter().Text("WCAG Accessibility Report")
+                .FontSize(28).Bold().FontColor("#1A237E");
+
+            col.Item().PaddingTop(8).AlignCenter().Text(analysis.Url)
+                .FontSize(11).FontColor("#546E7A");
+
+            col.Item().PaddingTop(4).AlignCenter()
+                .Text($"Generated: {analysis.CompletedAt?.ToString("dd MMM yyyy HH:mm") ?? DateTime.UtcNow.ToString("dd MMM yyyy HH:mm")} UTC")
+                .FontSize(9).FontColor("#90A4AE");
+
+            col.Item().Height(50);
+
+            col.Item().AlignCenter().Column(scoreCol =>
+            {
+                scoreCol.Item().AlignCenter().Text($"{score}").FontSize(72).Bold().FontColor(scoreColor);
+                scoreCol.Item().AlignCenter().Text("out of 100").FontSize(12).FontColor("#90A4AE");
+                scoreCol.Item().PaddingTop(4).AlignCenter().Text(scoreLabel).FontSize(14).Bold().FontColor(scoreColor);
+                scoreCol.Item().AlignCenter().Text("Accessibility Score").FontSize(10).FontColor("#90A4AE");
+            });
+
+            col.Item().Height(40);
+
+            col.Item().AlignCenter().Width(300).Column(bar =>
+            {
+                bar.Item().Row(row =>
+                {
+                    if (score > 0)
+                        row.RelativeItem(score).Height(10).Background(scoreColor);
+                    if (score < 100)
+                        row.RelativeItem(100 - score).Height(10).Background("#ECEFF1");
+                });
+            });
+
+            col.Item().Height(50);
+
+            col.Item().AlignCenter().Width(400).Row(row =>
+            {
+                CoverStatBadge(row.RelativeItem(), critical.ToString(), "Critical", "#D32F2F", "#FFEBEE");
+                CoverStatBadge(row.RelativeItem(), serious.ToString(),  "Serious",  "#F57C00", "#FFF3E0");
+                CoverStatBadge(row.RelativeItem(), moderate.ToString(), "Moderate", "#F9A825", "#FFFDE7");
+                CoverStatBadge(row.RelativeItem(), minor.ToString(),    "Minor",    "#388E3C", "#E8F5E9");
+            });
+
+            col.Item().Extend();
+
+            col.Item().AlignCenter().Text("debugieman.com")
+                .FontSize(9).FontColor("#CFD8DC");
+        });
+    }
+
+    private static void CoverStatBadge(IContainer container, string count, string label, string color, string bg)
+    {
+        container.Padding(6).Background(bg).Padding(10).Column(col =>
+        {
+            col.Item().AlignCenter().Text(count).FontSize(18).Bold().FontColor(color);
+            col.Item().AlignCenter().Text(label).FontSize(8).FontColor(color);
+        });
     }
 
     private static void ComposeHeader(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
