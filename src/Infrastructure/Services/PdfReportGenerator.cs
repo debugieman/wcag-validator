@@ -53,6 +53,34 @@ public class PdfReportGenerator : IPdfReportGenerator
         ["animation-reduced-motion-missing"] = "Animation Ignores Reduced Motion",
     };
 
+    private static readonly Dictionary<string, string> WcagCriteria = new()
+    {
+        ["color-contrast"]                   = "WCAG 1.4.3",
+        ["image-alt"]                        = "WCAG 1.1.1",
+        ["svg-image-missing-alt"]            = "WCAG 1.1.1",
+        ["button-name"]                      = "WCAG 4.1.2",
+        ["link-name"]                        = "WCAG 2.4.4",
+        ["input-missing-label"]              = "WCAG 1.3.1",
+        ["select-textarea-missing-label"]    = "WCAG 1.3.1",
+        ["label"]                            = "WCAG 1.3.1",
+        ["html-has-lang"]                    = "WCAG 3.1.1",
+        ["heading-level-skipped"]            = "WCAG 1.3.1",
+        ["heading-first-not-h1"]             = "WCAG 1.3.1",
+        ["skip-navigation-missing"]          = "WCAG 2.4.1",
+        ["landmark-one-main"]                = "WCAG 1.3.6",
+        ["landmark-unique"]                  = "WCAG 1.3.6",
+        ["region"]                           = "WCAG 1.3.6",
+        ["list"]                             = "WCAG 1.3.1",
+        ["table-missing-caption"]            = "WCAG 1.3.1",
+        ["aria-allowed-role"]                = "WCAG 4.1.2",
+        ["focus-visible-missing"]            = "WCAG 2.4.7",
+        ["interactive-not-focusable"]        = "WCAG 2.1.1",
+        ["keyboard-trap"]                    = "WCAG 2.1.2",
+        ["reflow-horizontal-scroll"]         = "WCAG 1.4.10",
+        ["touch-target-too-small"]           = "WCAG 2.5.5",
+        ["animation-reduced-motion-missing"] = "WCAG 2.3.3",
+    };
+
     private static readonly Dictionary<string, string> RuleDescriptions = new()
     {
         ["color-contrast"]                  = "Text is too low-contrast against its background. Affects ~8% of users with visual impairments and anyone reading in bright sunlight.",
@@ -403,7 +431,13 @@ public class PdfReportGenerator : IPdfReportGenerator
                             var friendly = FriendlyNames.GetValueOrDefault(group.RuleId);
                             if (friendly is not null)
                                 nameCol.Item().Text(friendly).FontSize(10).Bold().FontColor("#263238");
-                            nameCol.Item().Text(group.RuleId).FontSize(8).FontColor("#90A4AE");
+                            nameCol.Item().Text(text =>
+                            {
+                                text.Span(group.RuleId).FontSize(8).FontColor("#90A4AE");
+                                var criterion = WcagCriteria.GetValueOrDefault(group.RuleId);
+                                if (criterion is not null)
+                                    text.Span($"  ·  {criterion}").FontSize(8).Bold().FontColor("#1565C0");
+                            });
                         });
                         row.ConstantItem(80).AlignRight()
                             .Text($"×{group.Count} occurrences")
