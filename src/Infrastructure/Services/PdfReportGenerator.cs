@@ -318,7 +318,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 col.Item().PaddingTop(16);
             }
 
-            col.Item().Element(c => ComposeRecommendations(c, analysis.Results.ToList()));
         });
     }
 
@@ -444,7 +443,8 @@ public class PdfReportGenerator : IPdfReportGenerator
                             .FontSize(8).FontColor(color);
                     });
 
-                    inner.Item().PaddingTop(3).Text(group.Description)
+                    var displayDesc = RuleDescriptions.GetValueOrDefault(group.RuleId) ?? group.Description;
+                    inner.Item().PaddingTop(3).Text(displayDesc)
                         .FontSize(9).FontColor("#546E7A");
 
                     if (group.Count > 5)
@@ -522,55 +522,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                         });
                         if (friendly is not null)
                             inner.Item().Text(item.RuleId).FontSize(8).FontColor("#90A4AE");
-                        inner.Item().PaddingTop(2).Text(friendlyDesc)
-                            .FontSize(9).FontColor("#546E7A");
-                    });
-                });
-            }
-        });
-    }
-
-    private static void ComposeRecommendations(IContainer container, List<AnalysisResultDto> results)
-    {
-        var uniqueRules = results
-            .GroupBy(r => r.RuleId)
-            .Where(g => RuleDescriptions.ContainsKey(g.Key))
-            .Select(g => new { RuleId = g.Key, Impact = g.First().Impact, Count = g.Count() })
-            .OrderBy(g => ImpactOrder.Keys.ToList().IndexOf(g.Impact))
-            .ToList();
-
-        if (uniqueRules.Count == 0) return;
-
-        container.Border(1).BorderColor("#CFD8DC").Padding(14).Column(col =>
-        {
-            col.Item().Text("What These Issues Mean for Your Business")
-                .FontSize(13).Bold().FontColor("#1A237E");
-            col.Item().PaddingTop(4).Text(
-                "Below is a plain-language explanation of each issue found on your site and why it matters to your visitors.")
-                .FontSize(9).FontColor("#546E7A");
-
-            col.Item().PaddingTop(10);
-
-            foreach (var (rule, index) in uniqueRules.Select((r, i) => (r, i)))
-            {
-                var bg = index % 2 == 0 ? "#FAFAFA" : "#FFFFFF";
-                var impactColor = ImpactColors.GetValueOrDefault(rule.Impact, "#546E7A");
-                var friendlyDesc = RuleDescriptions[rule.RuleId];
-
-                col.Item().Background(bg).BorderBottom(1).BorderColor("#ECEFF1").Padding(8).Row(row =>
-                {
-                    row.ConstantItem(6).Background(impactColor);
-                    row.ConstantItem(8);
-                    row.RelativeItem().Column(inner =>
-                    {
-                        var friendly = FriendlyNames.GetValueOrDefault(rule.RuleId);
-                        inner.Item().Text(text =>
-                        {
-                            text.Span(friendly ?? rule.RuleId).FontSize(9).Bold().FontColor("#263238");
-                            text.Span($"  ×{rule.Count} occurrences").FontSize(8).FontColor(impactColor);
-                        });
-                        if (friendly is not null)
-                            inner.Item().Text(rule.RuleId).FontSize(7).FontColor("#B0BEC5");
                         inner.Item().PaddingTop(2).Text(friendlyDesc)
                             .FontSize(9).FontColor("#546E7A");
                     });
