@@ -25,6 +25,34 @@ public class PdfReportGenerator : IPdfReportGenerator
         ["minor"]    = "#388E3C"
     };
 
+    private static readonly Dictionary<string, string> FriendlyNames = new()
+    {
+        ["color-contrast"]                   = "Low Color Contrast",
+        ["image-alt"]                        = "Missing Image Alt Text",
+        ["svg-image-missing-alt"]            = "Missing SVG Alt Text",
+        ["button-name"]                      = "Unlabelled Button",
+        ["link-name"]                        = "Unlabelled Link",
+        ["input-missing-label"]              = "Form Field Without Label",
+        ["select-textarea-missing-label"]    = "Dropdown or Text Area Without Label",
+        ["label"]                            = "Missing Form Label",
+        ["html-has-lang"]                    = "Missing Page Language",
+        ["heading-level-skipped"]            = "Skipped Heading Level",
+        ["heading-first-not-h1"]             = "First Heading Is Not H1",
+        ["skip-navigation-missing"]          = "Missing Skip Navigation Link",
+        ["landmark-one-main"]                = "Missing Main Landmark",
+        ["landmark-unique"]                  = "Duplicate Landmark Regions",
+        ["region"]                           = "Content Outside Landmark Regions",
+        ["list"]                             = "Incorrect List Structure",
+        ["table-missing-caption"]            = "Table Without Caption",
+        ["aria-allowed-role"]                = "Invalid ARIA Role",
+        ["focus-visible-missing"]            = "Invisible Keyboard Focus",
+        ["interactive-not-focusable"]        = "Element Not Keyboard Accessible",
+        ["keyboard-trap"]                    = "Keyboard Focus Trap",
+        ["reflow-horizontal-scroll"]         = "Horizontal Scroll at Small Viewport",
+        ["touch-target-too-small"]           = "Touch Target Too Small",
+        ["animation-reduced-motion-missing"] = "Animation Ignores Reduced Motion",
+    };
+
     private static readonly Dictionary<string, string> RuleDescriptions = new()
     {
         ["color-contrast"]                  = "Text is too low-contrast against its background. Affects ~8% of users with visual impairments and anyone reading in bright sunlight.",
@@ -370,7 +398,13 @@ public class PdfReportGenerator : IPdfReportGenerator
                 {
                     inner.Item().Row(row =>
                     {
-                        row.RelativeItem().Text(group.RuleId).FontSize(10).Bold().FontColor("#263238");
+                        row.RelativeItem().Column(nameCol =>
+                        {
+                            var friendly = FriendlyNames.GetValueOrDefault(group.RuleId);
+                            if (friendly is not null)
+                                nameCol.Item().Text(friendly).FontSize(10).Bold().FontColor("#263238");
+                            nameCol.Item().Text(group.RuleId).FontSize(8).FontColor("#90A4AE");
+                        });
                         row.ConstantItem(80).AlignRight()
                             .Text($"×{group.Count} occurrences")
                             .FontSize(8).FontColor(color);
@@ -446,11 +480,14 @@ public class PdfReportGenerator : IPdfReportGenerator
 
                     row.RelativeItem().Column(inner =>
                     {
+                        var friendly = FriendlyNames.GetValueOrDefault(item.RuleId);
                         inner.Item().Text(text =>
                         {
-                            text.Span(item.RuleId).FontSize(10).Bold().FontColor("#263238");
+                            text.Span(friendly ?? item.RuleId).FontSize(10).Bold().FontColor("#263238");
                             text.Span($"  ×{item.Count}").FontSize(9).FontColor(impactColor);
                         });
+                        if (friendly is not null)
+                            inner.Item().Text(item.RuleId).FontSize(8).FontColor("#90A4AE");
                         inner.Item().PaddingTop(2).Text(friendlyDesc)
                             .FontSize(9).FontColor("#546E7A");
                     });
@@ -492,11 +529,14 @@ public class PdfReportGenerator : IPdfReportGenerator
                     row.ConstantItem(8);
                     row.RelativeItem().Column(inner =>
                     {
+                        var friendly = FriendlyNames.GetValueOrDefault(rule.RuleId);
                         inner.Item().Text(text =>
                         {
-                            text.Span(rule.RuleId).FontSize(9).Bold().FontColor("#263238");
+                            text.Span(friendly ?? rule.RuleId).FontSize(9).Bold().FontColor("#263238");
                             text.Span($"  ×{rule.Count} occurrences").FontSize(8).FontColor(impactColor);
                         });
+                        if (friendly is not null)
+                            inner.Item().Text(rule.RuleId).FontSize(7).FontColor("#B0BEC5");
                         inner.Item().PaddingTop(2).Text(friendlyDesc)
                             .FontSize(9).FontColor("#546E7A");
                     });
