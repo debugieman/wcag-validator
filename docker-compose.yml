@@ -4,11 +4,11 @@ services:
       context: .
       dockerfile: src/Api/Dockerfile
     ports:
-      - "5042:5042"
+      - "8080:8080"
     volumes:
       - db-data:/app/data
     environment:
-      - ASPNETCORE_URLS=http://+:5042
+      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Data Source=/app/data/wcag-analyzer.db
 
   frontend:
