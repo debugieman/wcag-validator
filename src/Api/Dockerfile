@@ -57,7 +57,7 @@ COPY --from=build /app .
 # Create data directory for SQLite
 RUN mkdir -p /app/data
 
-ENV ASPNETCORE_URLS=http://+:5042
-EXPOSE 5042
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "WcagAnalyzer.Api.dll"]
