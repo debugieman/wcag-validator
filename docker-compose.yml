@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: src/Api/Dockerfile
     ports:
-      - "8080:8080"
+      - "5042:8080"
     volumes:
       - db-data:/app/data
     environment:

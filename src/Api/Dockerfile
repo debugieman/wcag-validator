@@ -9,6 +9,7 @@ COPY src/Application/WcagAnalyzer.Application.csproj src/Application/
 COPY src/Domain/WcagAnalyzer.Domain.csproj src/Domain/
 COPY src/Infrastructure/WcagAnalyzer.Infrastructure.csproj src/Infrastructure/
 COPY src/Tests/WcagAnalyzer.Tests.csproj src/Tests/
+COPY src/Tests.E2E/WcagAnalyzer.Tests.E2E.csproj src/Tests.E2E/
 RUN dotnet restore
 
 # Copy all source and publish
