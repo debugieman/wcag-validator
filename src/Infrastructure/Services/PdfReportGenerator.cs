@@ -269,7 +269,7 @@ public class PdfReportGenerator : IPdfReportGenerator
         });
     }
 
-    private static int CalculateScore(List<AnalysisResultDto> results)
+    internal static int CalculateScore(List<AnalysisResultDto> results)
     {
         var deductions = results
             .GroupBy(r => r.RuleId)
