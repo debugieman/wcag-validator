@@ -76,4 +76,51 @@ public class AnalysisRateLimiterTests
 
         _repoMock.Verify(r => r.ExistsByDomainSinceAsync("example.com", It.IsAny<DateTime>()), Times.Once);
     }
+
+    [Fact]
+    public async Task IsDomainAllowedAsync_ShouldPassSinceDateExactly24HoursAgo()
+    {
+        DateTime? capturedSince = null;
+        _repoMock
+            .Setup(r => r.ExistsByDomainSinceAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Callback<string, DateTime, CancellationToken>((_, since, _) => capturedSince = since)
+            .ReturnsAsync(false);
+
+        var before = DateTime.UtcNow.AddHours(-AnalysisRateLimiter.CooldownHours);
+        await _rateLimiter.IsDomainAllowedAsync("https://example.com");
+        var after = DateTime.UtcNow.AddHours(-AnalysisRateLimiter.CooldownHours);
+
+        capturedSince.Should().NotBeNull();
+        capturedSince!.Value.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
+    }
+
+    [Fact]
+    public void CooldownHours_ShouldBe24()
+    {
+        AnalysisRateLimiter.CooldownHours.Should().Be(24);
+    }
+
+    [Fact]
+    public async Task IsDomainAllowedAsync_AnalysisOlderThan24Hours_ShouldReturnTrue()
+    {
+        // Repository returns false = no analysis within the window → domain allowed
+        _repoMock.Setup(r => r.ExistsByDomainSinceAsync("example.com", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _rateLimiter.IsDomainAllowedAsync("https://example.com");
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsDomainAllowedAsync_AnalysisWithinLast24Hours_ShouldReturnFalse()
+    {
+        // Repository returns true = analysis found within the window → domain blocked
+        _repoMock.Setup(r => r.ExistsByDomainSinceAsync("example.com", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _rateLimiter.IsDomainAllowedAsync("https://example.com");
+
+        result.Should().BeFalse();
+    }
 }
