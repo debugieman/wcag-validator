@@ -555,7 +555,7 @@ public class PdfReportGenerator : IPdfReportGenerator
         );
     }
 
-    private static string TruncateHtml(string html)
+    internal static string TruncateHtml(string html)
     {
         const int maxLength = 120;
         return html.Length > maxLength ? html[..maxLength] + "..." : html;
