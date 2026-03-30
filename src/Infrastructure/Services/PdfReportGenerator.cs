@@ -115,7 +115,6 @@ public class PdfReportGenerator : IPdfReportGenerator
         QuestPDF.Settings.License = LicenseType.Community;
 
         var logoBytes = TryLoadLogo();
-        var grouped = GroupByImpact(analysis);
 
         var document = Document.Create(container =>
         {
@@ -135,7 +134,7 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
                 page.Header().Element(c => ComposeHeader(c, logoBytes, analysis));
-                page.Content().Element(c => ComposeContent(c, analysis, grouped));
+                page.Content().Element(c => ComposeContent(c, analysis));
                 page.Footer().Element(ComposeFooter);
             });
         });
@@ -145,45 +144,57 @@ public class PdfReportGenerator : IPdfReportGenerator
 
     private static void ComposeCoverPage(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
     {
-        var score = CalculateScore(analysis.Results.ToList());
-        var scoreColor = score >= 80 ? "#388E3C" : score >= 50 ? "#F57C00" : "#D32F2F";
+        var allResults = analysis.Results.ToList();
+        var score = CalculateScore(allResults);
+        var scoreColor = ScoreColor(score);
         var scoreLabel = score >= 80 ? "Good" : score >= 50 ? "Needs Improvement" : "Poor";
 
-        var critical = analysis.Results.Count(r => r.Impact == "critical");
-        var serious  = analysis.Results.Count(r => r.Impact == "serious");
-        var moderate = analysis.Results.Count(r => r.Impact == "moderate");
-        var minor    = analysis.Results.Count(r => r.Impact == "minor");
+        var critical = allResults.Count(r => r.Impact == "critical");
+        var serious  = allResults.Count(r => r.Impact == "serious");
+        var moderate = allResults.Count(r => r.Impact == "moderate");
+        var minor    = allResults.Count(r => r.Impact == "minor");
+
+        var pageGroups = analysis.DeepScan
+            ? GroupByPage(allResults)
+            : [];
 
         container.Column(col =>
         {
-            col.Item().Height(80);
+            col.Item().Height(60);
 
             if (logoBytes is not null)
                 col.Item().AlignCenter().Width(120).Image(logoBytes);
 
-            col.Item().Height(40);
+            col.Item().Height(30);
 
             col.Item().AlignCenter().Text("WCAG Accessibility Report")
                 .FontSize(28).Bold().FontColor("#1A237E");
 
-            col.Item().PaddingTop(8).AlignCenter().Text(analysis.Url)
+            if (analysis.DeepScan)
+                col.Item().PaddingTop(6).AlignCenter()
+                    .Background("#E8EAF6").Padding(4)
+                    .Text("Deep Scan  ·  Multiple Pages")
+                    .FontSize(10).Bold().FontColor("#1A237E");
+
+            col.Item().PaddingTop(6).AlignCenter().Text(analysis.Url)
                 .FontSize(11).FontColor("#546E7A");
 
             col.Item().PaddingTop(4).AlignCenter()
                 .Text($"Generated: {analysis.CompletedAt?.ToString("dd MMM yyyy HH:mm") ?? DateTime.UtcNow.ToString("dd MMM yyyy HH:mm")} UTC")
                 .FontSize(9).FontColor("#90A4AE");
 
-            col.Item().Height(50);
+            col.Item().Height(30);
 
             col.Item().AlignCenter().Column(scoreCol =>
             {
+                var scoreTitle = analysis.DeepScan ? "Average Score" : "Accessibility Score";
                 scoreCol.Item().AlignCenter().Text($"{score}").FontSize(72).Bold().FontColor(scoreColor);
                 scoreCol.Item().AlignCenter().Text("out of 100").FontSize(12).FontColor("#90A4AE");
                 scoreCol.Item().PaddingTop(4).AlignCenter().Text(scoreLabel).FontSize(14).Bold().FontColor(scoreColor);
-                scoreCol.Item().AlignCenter().Text("Accessibility Score").FontSize(10).FontColor("#90A4AE");
+                scoreCol.Item().AlignCenter().Text(scoreTitle).FontSize(10).FontColor("#90A4AE");
             });
 
-            col.Item().Height(40);
+            col.Item().Height(24);
 
             col.Item().AlignCenter().Width(300).Column(bar =>
             {
@@ -196,7 +207,7 @@ public class PdfReportGenerator : IPdfReportGenerator
                 });
             });
 
-            col.Item().Height(50);
+            col.Item().Height(24);
 
             col.Item().AlignCenter().Width(400).Row(row =>
             {
@@ -205,6 +216,50 @@ public class PdfReportGenerator : IPdfReportGenerator
                 CoverStatBadge(row.RelativeItem(), moderate.ToString(), "Moderate", "#F9A825", "#FFFDE7");
                 CoverStatBadge(row.RelativeItem(), minor.ToString(),    "Minor",    "#388E3C", "#E8F5E9");
             });
+
+            // Per-page score table — only for deep scan
+            if (pageGroups.Count > 0)
+            {
+                col.Item().Height(20);
+
+                col.Item().AlignCenter().Width(460).Column(tableCol =>
+                {
+                    tableCol.Item().Background("#1A237E").Padding(8)
+                        .Text("Score per page").FontSize(10).Bold().FontColor(Colors.White);
+
+                    foreach (var (pageUrl, pageResults) in pageGroups)
+                    {
+                        var pageScore = CalculateScore(pageResults);
+                        var pageColor = ScoreColor(pageScore);
+                        var shortUrl = ShortenUrl(pageUrl);
+
+                        tableCol.Item()
+                            .BorderBottom(1).BorderColor("#ECEFF1")
+                            .Background("#FAFAFA")
+                            .Padding(6).Row(row =>
+                            {
+                                row.RelativeItem().AlignMiddle()
+                                    .Text(shortUrl).FontSize(9).FontColor("#263238");
+
+                                row.ConstantItem(50).AlignMiddle().AlignRight()
+                                    .Text($"{pageScore}/100").FontSize(9).Bold().FontColor(pageColor);
+
+                                row.ConstantItem(8);
+
+                                row.ConstantItem(80).AlignMiddle().Column(barCol =>
+                                {
+                                    barCol.Item().Row(barRow =>
+                                    {
+                                        if (pageScore > 0)
+                                            barRow.RelativeItem(pageScore).Height(6).Background(pageColor);
+                                        if (pageScore < 100)
+                                            barRow.RelativeItem(100 - pageScore).Height(6).Background("#ECEFF1");
+                                    });
+                                });
+                            });
+                    }
+                });
+            }
 
             col.Item().Extend();
 
@@ -225,7 +280,7 @@ public class PdfReportGenerator : IPdfReportGenerator
     private static void ComposeHeader(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
     {
         var score = CalculateScore(analysis.Results.ToList());
-        var scoreColor = score >= 80 ? "#388E3C" : score >= 50 ? "#F57C00" : "#D32F2F";
+        var scoreColor = ScoreColor(score);
 
         container.Column(col =>
         {
@@ -285,19 +340,18 @@ public class PdfReportGenerator : IPdfReportGenerator
         return Math.Max(0, 100 - deductions);
     }
 
-    private static void ComposeContent(IContainer container, GetAnalysisByIdResult analysis, Dictionary<string, List<AnalysisResultDto>> grouped)
+    private static void ComposeContent(IContainer container, GetAnalysisByIdResult analysis)
     {
+        var allResults = analysis.Results.ToList();
+
         container.PaddingTop(16).Column(col =>
         {
             col.Item().Element(ComposeIntro);
-
             col.Item().PaddingTop(16);
-
-            col.Item().Element(c => ComposeSummary(c, analysis.Results.ToList()));
-
+            col.Item().Element(c => ComposeSummary(c, allResults));
             col.Item().PaddingTop(20);
 
-            if (!analysis.Results.Any())
+            if (allResults.Count == 0)
             {
                 col.Item().Padding(20).AlignCenter()
                     .Text("No accessibility violations found.")
@@ -305,9 +359,68 @@ public class PdfReportGenerator : IPdfReportGenerator
                 return;
             }
 
-            col.Item().Element(c => ComposeTopPriorities(c, analysis.Results.ToList()));
-
+            col.Item().Element(c => ComposeTopPriorities(c, allResults));
             col.Item().PaddingTop(20);
+
+            if (analysis.DeepScan)
+            {
+                foreach (var (pageUrl, pageResults) in GroupByPage(allResults))
+                {
+                    col.Item().Element(c => ComposePageSection(c, pageUrl, pageResults));
+                    col.Item().PaddingTop(20);
+                }
+            }
+            else
+            {
+                var grouped = GroupByImpact(allResults);
+                foreach (var (impact, label) in ImpactOrder)
+                {
+                    if (!grouped.TryGetValue(impact, out var items) || items.Count == 0)
+                        continue;
+
+                    col.Item().Element(c => ComposeSection(c, label, impact, items));
+                    col.Item().PaddingTop(16);
+                }
+            }
+        });
+    }
+
+    private static void ComposePageSection(IContainer container, string pageUrl, List<AnalysisResultDto> pageResults)
+    {
+        var score = CalculateScore(pageResults);
+        var scoreColor = ScoreColor(score);
+        var shortUrl = ShortenUrl(pageUrl);
+        var grouped = GroupByImpact(pageResults);
+
+        container.Column(col =>
+        {
+            // Page header bar
+            col.Item().Background("#1A237E").Padding(10).Row(row =>
+            {
+                row.RelativeItem().AlignMiddle().Column(inner =>
+                {
+                    inner.Item().Text(shortUrl).FontSize(11).Bold().FontColor(Colors.White);
+                    inner.Item().Text(pageUrl).FontSize(8).FontColor("#9FA8DA");
+                });
+
+                row.ConstantItem(80).AlignMiddle().AlignRight().Column(scoreCol =>
+                {
+                    scoreCol.Item().AlignRight()
+                        .Text($"{score}/100").FontSize(14).Bold().FontColor(scoreColor == "#388E3C" ? "#A5D6A7" : scoreColor == "#F57C00" ? "#FFCC80" : "#EF9A9A");
+                    scoreCol.Item().AlignRight()
+                        .Text("page score").FontSize(7).FontColor("#9FA8DA");
+                });
+            });
+
+            col.Item().PaddingTop(8);
+
+            if (pageResults.Count == 0)
+            {
+                col.Item().Background("#E8F5E9").Padding(10)
+                    .Text("No violations found on this page.")
+                    .FontSize(10).FontColor("#388E3C");
+                return;
+            }
 
             foreach (var (impact, label) in ImpactOrder)
             {
@@ -315,9 +428,8 @@ public class PdfReportGenerator : IPdfReportGenerator
                     continue;
 
                 col.Item().Element(c => ComposeSection(c, label, impact, items));
-                col.Item().PaddingTop(16);
+                col.Item().PaddingTop(10);
             }
-
         });
     }
 
@@ -556,12 +668,28 @@ public class PdfReportGenerator : IPdfReportGenerator
         });
     }
 
-    private static Dictionary<string, List<AnalysisResultDto>> GroupByImpact(GetAnalysisByIdResult analysis)
-    {
-        return ImpactOrder.Keys.ToDictionary(
+    private static Dictionary<string, List<AnalysisResultDto>> GroupByImpact(List<AnalysisResultDto> results) =>
+        ImpactOrder.Keys.ToDictionary(
             impact => impact,
-            impact => analysis.Results.Where(r => r.Impact == impact).ToList()
+            impact => results.Where(r => r.Impact == impact).ToList()
         );
+
+    internal static List<KeyValuePair<string, List<AnalysisResultDto>>> GroupByPage(List<AnalysisResultDto> results) =>
+        results
+            .GroupBy(r => r.PageUrl ?? "")
+            .OrderBy(g => g.Key)
+            .Select(g => new KeyValuePair<string, List<AnalysisResultDto>>(g.Key, g.ToList()))
+            .ToList();
+
+    private static string ScoreColor(int score) =>
+        score >= 80 ? "#388E3C" : score >= 50 ? "#F57C00" : "#D32F2F";
+
+    private static string ShortenUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return url;
+        var path = uri.AbsolutePath.TrimEnd('/');
+        return string.IsNullOrEmpty(path) ? uri.Host : $"{uri.Host}{path}";
     }
 
     internal static string TruncateHtml(string html)
