@@ -25,6 +25,28 @@
       </button>
     </div>
 
+    <div class="scan-mode">
+      <label class="scan-option" [class.selected]="scanMode() === 'quick'">
+        <input type="radio" name="scanMode" value="quick"
+               [checked]="scanMode() === 'quick'"
+               (change)="scanMode.set('quick')" />
+        <div class="scan-option-content">
+          <span class="scan-option-title">Quick Check</span>
+          <span class="scan-option-desc">One page, instant results</span>
+        </div>
+      </label>
+
+      <label class="scan-option" [class.selected]="scanMode() === 'deep'">
+        <input type="radio" name="scanMode" value="deep"
+               [checked]="scanMode() === 'deep'"
+               (change)="scanMode.set('deep')" />
+        <div class="scan-option-content">
+          <span class="scan-option-title">Deep Scan</span>
+          <span class="scan-option-desc">Main page + up to 5 subpages</span>
+        </div>
+      </label>
+    </div>
+
     @if (message()) {
       <p class="message" [class.error]="messageType() === 'error'">{{ message() }}</p>
     }

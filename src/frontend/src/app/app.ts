@@ -14,6 +14,7 @@ export class App {
 
   url = signal('');
   email = signal('');
+  scanMode = signal<'quick' | 'deep'>('quick');
   message = signal('');
   messageType = signal<'success' | 'error'>('success');
   isLoading = signal(false);
@@ -107,7 +108,7 @@ export class App {
     this.isLoading.set(true);
     this.message.set('');
 
-    this.http.post<any>('/api/analysis', { url: normalizedUrl, email: emailValue })
+    this.http.post<any>('/api/analysis', { url: normalizedUrl, email: emailValue, deepScan: this.scanMode() === 'deep' })
       .subscribe({
         next: (res) => {
           this.messageType.set('success');
