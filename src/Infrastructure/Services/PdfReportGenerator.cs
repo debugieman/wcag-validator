@@ -391,23 +391,32 @@ public class PdfReportGenerator : IPdfReportGenerator
         });
     }
 
+    internal record GroupedRule(
+        string RuleId,
+        int Count,
+        string Description,
+        string? HelpUrl,
+        List<string> Examples);
+
+    internal static List<GroupedRule> GroupRules(List<AnalysisResultDto> items) =>
+        items
+            .GroupBy(r => r.RuleId)
+            .Select(g => new GroupedRule(
+                RuleId:      g.Key,
+                Count:       g.Count(),
+                Description: g.First().Description,
+                HelpUrl:     g.First().HelpUrl,
+                Examples:    g.Where(r => !string.IsNullOrWhiteSpace(r.HtmlElement))
+                              .Take(2)
+                              .Select(r => r.HtmlElement!)
+                              .ToList()
+            ))
+            .ToList();
+
     private static void ComposeSection(IContainer container, string label, string impact, List<AnalysisResultDto> items)
     {
         var color = ImpactColors.GetValueOrDefault(impact, "#546E7A");
-        var grouped = items
-            .GroupBy(r => r.RuleId)
-            .Select(g => new
-            {
-                RuleId      = g.Key,
-                Count       = g.Count(),
-                Description = g.First().Description,
-                HelpUrl     = g.First().HelpUrl,
-                Examples    = g.Where(r => !string.IsNullOrWhiteSpace(r.HtmlElement))
-                               .Take(2)
-                               .Select(r => r.HtmlElement!)
-                               .ToList()
-            })
-            .ToList();
+        var grouped = GroupRules(items);
 
         container.Column(col =>
         {
