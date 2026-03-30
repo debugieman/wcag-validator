@@ -12,5 +12,7 @@ public class AnalysisRequest
     public DateTime? CompletedAt { get; set; }
     public string? ErrorMessage { get; set; }
 
+    public bool DeepScan { get; set; }
+
     public ICollection<AnalysisResult> Results { get; set; } = new List<AnalysisResult>();
 }

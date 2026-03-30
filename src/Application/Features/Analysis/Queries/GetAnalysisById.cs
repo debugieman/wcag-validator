@@ -10,13 +10,15 @@ public record AnalysisResultDto(
     string Impact,
     string Description,
     string? HtmlElement,
-    string? HelpUrl);
+    string? HelpUrl,
+    string? PageUrl);
 
 public record GetAnalysisByIdResult(
     Guid Id,
     string Url,
     string Email,
     string Status,
+    bool DeepScan,
     DateTime CreatedAt,
     DateTime? CompletedAt,
     string? ErrorMessage,
@@ -42,6 +44,7 @@ public class GetAnalysisByIdHandler : IRequestHandler<GetAnalysisByIdQuery, GetA
             analysis.Url,
             analysis.Email,
             analysis.Status.ToString(),
+            analysis.DeepScan,
             analysis.CreatedAt,
             analysis.CompletedAt,
             analysis.ErrorMessage,
@@ -50,6 +53,7 @@ public class GetAnalysisByIdHandler : IRequestHandler<GetAnalysisByIdQuery, GetA
                 r.Impact,
                 r.Description,
                 r.HtmlElement,
-                r.HelpUrl)));
+                r.HelpUrl,
+                r.PageUrl)));
     }
 }

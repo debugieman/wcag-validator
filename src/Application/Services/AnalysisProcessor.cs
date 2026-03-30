@@ -37,7 +37,8 @@ public class AnalysisProcessor : IAnalysisProcessor
                     Impact = violation.Impact,
                     Description = violation.Description,
                     HelpUrl = violation.HelpUrl,
-                    HtmlElement = violation.HtmlElement
+                    HtmlElement = violation.HtmlElement,
+                    PageUrl = violation.PageUrl
                 });
             }
 

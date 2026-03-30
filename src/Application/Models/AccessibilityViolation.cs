@@ -7,4 +7,5 @@ public class AccessibilityViolation
     public string Description { get; set; } = string.Empty;
     public string? HelpUrl { get; set; }
     public string? HtmlElement { get; set; }
+    public string? PageUrl { get; set; }
 }

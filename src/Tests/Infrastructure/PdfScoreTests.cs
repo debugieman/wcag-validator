@@ -7,7 +7,7 @@ namespace WcagAnalyzer.Tests.Infrastructure;
 public class PdfScoreTests
 {
     private static AnalysisResultDto Result(string ruleId, string impact) =>
-        new(ruleId, impact, "desc", null, null);
+        new(ruleId, impact, "desc", null, null, null);
 
     [Fact]
     public void NoViolations_ShouldReturnPerfectScore()

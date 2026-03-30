@@ -7,7 +7,7 @@ namespace WcagAnalyzer.Tests.Infrastructure;
 public class PdfGroupingTests
 {
     private static AnalysisResultDto Result(string ruleId, string impact, string? html = null) =>
-        new(ruleId, impact, "desc", html, null);
+        new(ruleId, impact, "desc", html, null, null);
 
     [Fact]
     public void EmptyList_ShouldReturnEmptyGroups()
@@ -106,8 +106,8 @@ public class PdfGroupingTests
     {
         var items = new List<AnalysisResultDto>
         {
-            new("color-contrast", "serious", "First description", null, null),
-            new("color-contrast", "serious", "Second description", null, null)
+            new("color-contrast", "serious", "First description", null, null, null),
+            new("color-contrast", "serious", "Second description", null, null, null)
         };
 
         var groups = PdfReportGenerator.GroupRules(items);
