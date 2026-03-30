@@ -6,7 +6,7 @@ using WcagAnalyzer.Domain.Repositories;
 
 namespace WcagAnalyzer.Application.Features.Analysis.Commands;
 
-public record CreateAnalysisCommand(string Url, string Email) : IRequest<CreateAnalysisResult>;
+public record CreateAnalysisCommand(string Url, string Email, bool DeepScan) : IRequest<CreateAnalysisResult>;
 
 public record CreateAnalysisResult(
     Guid Id,
@@ -42,7 +42,8 @@ public class CreateAnalysisHandler : IRequestHandler<CreateAnalysisCommand, Crea
             Url = request.Url,
             Email = request.Email,
             Status = AnalysisStatus.Pending,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            DeepScan = request.DeepScan
         };
 
         await _repository.AddAsync(analysis, cancellationToken);

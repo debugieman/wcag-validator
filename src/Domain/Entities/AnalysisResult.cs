@@ -9,6 +9,7 @@ public class AnalysisResult
     public string Description { get; set; } = string.Empty;
     public string? HtmlElement { get; set; }
     public string? HelpUrl { get; set; }
+    public string? PageUrl { get; set; }
 
     public AnalysisRequest AnalysisRequest { get; set; } = null!;
 }
