@@ -26,7 +26,7 @@ public class AnalysisProcessor : IAnalysisProcessor
 
         try
         {
-            var violations = await _analyzer.AnalyzeAsync(request.Url, cancellationToken);
+            var violations = await _analyzer.AnalyzeAsync(request.Url, request.DeepScan, cancellationToken);
 
             foreach (var violation in violations)
             {

@@ -50,7 +50,7 @@ public class AnalysisProcessorTests : IDisposable
         await _repository.AddAsync(request);
         _context.ChangeTracker.Clear();
 
-        _analyzerMock.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _analyzerMock.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AccessibilityViolation>());
 
         await _processor.ProcessAsync(request.Id, CancellationToken.None);
@@ -88,7 +88,7 @@ public class AnalysisProcessorTests : IDisposable
             }
         };
 
-        _analyzerMock.Setup(a => a.AnalyzeAsync(request.Url, It.IsAny<CancellationToken>()))
+        _analyzerMock.Setup(a => a.AnalyzeAsync(request.Url, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(violations);
 
         await _processor.ProcessAsync(request.Id, CancellationToken.None);
@@ -107,7 +107,7 @@ public class AnalysisProcessorTests : IDisposable
         await _repository.AddAsync(request);
         _context.ChangeTracker.Clear();
 
-        _analyzerMock.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _analyzerMock.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Navigation timeout"));
 
         await _processor.ProcessAsync(request.Id, CancellationToken.None);
@@ -125,7 +125,7 @@ public class AnalysisProcessorTests : IDisposable
         await _repository.AddAsync(request);
         _context.ChangeTracker.Clear();
 
-        _analyzerMock.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _analyzerMock.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AccessibilityViolation>());
 
         await _processor.ProcessAsync(request.Id, CancellationToken.None);
@@ -148,7 +148,7 @@ public class AnalysisProcessorTests : IDisposable
             .Returns((AnalysisRequest _, CancellationToken _) => Task.CompletedTask);
 
         AnalysisStatus? statusDuringAnalysis = null;
-        _analyzerMock.Setup(a => a.AnalyzeAsync(request.Url, It.IsAny<CancellationToken>()))
+        _analyzerMock.Setup(a => a.AnalyzeAsync(request.Url, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
                 statusDuringAnalysis = request.Status;
@@ -176,7 +176,7 @@ public class AnalysisProcessorTests : IDisposable
         await _repository.AddAsync(request);
         _context.ChangeTracker.Clear();
 
-        _analyzerMock.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _analyzerMock.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new OperationCanceledException());
 
         var act = async () => await _processor.ProcessAsync(request.Id, CancellationToken.None);

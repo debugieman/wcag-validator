@@ -54,7 +54,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IDisp
                 services.Remove(analyzerDescriptor);
 
             var mockAnalyzer = new Mock<IAccessibilityAnalyzer>();
-            mockAnalyzer.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            mockAnalyzer.Setup(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<AccessibilityViolation>());
             services.AddScoped<IAccessibilityAnalyzer>(_ => mockAnalyzer.Object);
         });

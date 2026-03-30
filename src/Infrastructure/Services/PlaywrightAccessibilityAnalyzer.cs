@@ -16,98 +16,176 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
         _browserManager = browserManager;
     }
 
-    public async Task<IReadOnlyList<AccessibilityViolation>> AnalyzeAsync(string url, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<AccessibilityViolation>> AnalyzeAsync(string url, bool deepScan, CancellationToken cancellationToken)
     {
         var browser = await _browserManager.GetBrowserAsync();
         await using var context = await browser.NewContextAsync();
-        var page = await context.NewPageAsync();
 
+        var allViolations = new List<AccessibilityViolation>();
+
+        // Analyze main page and collect subpage links if deep scan is requested
+        var subpageUrls = new List<string>();
+        var mainPage = await context.NewPageAsync();
         try
         {
-            await page.GotoAsync(url, new PageGotoOptions
+            await mainPage.GotoAsync(url, new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.Load,
+                WaitUntil = WaitUntilState.NetworkIdle,
                 Timeout = 30000
             });
 
-            await page.AddScriptTagAsync(new PageAddScriptTagOptions
+            if (deepScan)
             {
-                Content = AxeScript.Value
-            });
+                var hrefs = await mainPage.EvaluateAsync<string[]>(
+                    "() => Array.from(document.querySelectorAll('a[href]')).map(a => a.href)");
+                subpageUrls = ExtractSubpageLinks(url, hrefs ?? []);
+            }
 
-            var resultsJson = await page.EvaluateAsync<JsonElement>("() => axe.run().then(r => r)");
-            var violations = ParseViolations(resultsJson);
-
-            var headingViolations = await CheckHeadingHierarchyAsync(page);
-            violations.AddRange(headingViolations);
-
-            var skipNavViolation = await CheckSkipNavigationAsync(page);
-            if (skipNavViolation is not null)
-                violations.Add(skipNavViolation);
-
-            var formViolations = await CheckFormInputLabelsAsync(page);
-            violations.AddRange(formViolations);
-
-            var svgViolations = await CheckSvgImagesAsync(page);
-            violations.AddRange(svgViolations);
-
-            var tabindexViolations = await CheckTabindexAsync(page);
-            violations.AddRange(tabindexViolations);
-
-            var focusViolations = await CheckFocusVisibleAsync(page);
-            violations.AddRange(focusViolations);
-
-            var reflowViolation = await CheckReflowAsync(page);
-            if (reflowViolation is not null)
-                violations.Add(reflowViolation);
-
-            var trapViolation = await CheckKeyboardTrapAsync(page);
-            if (trapViolation is not null)
-                violations.Add(trapViolation);
-
-            var touchTargetViolations = await CheckTouchTargetSizeAsync(page);
-            violations.AddRange(touchTargetViolations);
-
-            var reducedMotionViolation = await CheckReducedMotionAsync(page);
-            if (reducedMotionViolation is not null)
-                violations.Add(reducedMotionViolation);
-
-            var langViolation = await CheckLangAttributeValidAsync(page);
-            if (langViolation is not null)
-                violations.Add(langViolation);
-
-            var autocompleteViolations = await CheckAutocompleteAsync(page);
-            violations.AddRange(autocompleteViolations);
-
-            var tableViolations = await CheckTableCaptionAsync(page);
-            violations.AddRange(tableViolations);
-
-            var pageTitleViolation = await CheckPageTitleDescriptiveAsync(page);
-            if (pageTitleViolation is not null)
-                violations.Add(pageTitleViolation);
-
-            var selectTextareaViolations = await CheckSelectTextareaLabelsAsync(page);
-            violations.AddRange(selectTextareaViolations);
-
-            var fieldsetViolations = await CheckFieldsetLegendAsync(page);
-            violations.AddRange(fieldsetViolations);
-
-            var ariaLiveViolation = await CheckAriaLiveAsync(page);
-            if (ariaLiveViolation is not null)
-                violations.Add(ariaLiveViolation);
-
-            var focusContextViolations = await CheckFocusContextChangeAsync(page);
-            violations.AddRange(focusContextViolations);
-
-            var errorIdentificationViolations = await CheckErrorIdentificationAsync(page);
-            violations.AddRange(errorIdentificationViolations);
-
-            return violations;
+            var violations = await AnalyzeSinglePageAsync(mainPage);
+            foreach (var v in violations)
+                v.PageUrl = url;
+            allViolations.AddRange(violations);
         }
         finally
         {
-            await page.CloseAsync();
+            await mainPage.CloseAsync();
         }
+
+        // Analyze each subpage
+        foreach (var subpageUrl in subpageUrls)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var subPage = await context.NewPageAsync();
+            try
+            {
+                await subPage.GotoAsync(subpageUrl, new PageGotoOptions
+                {
+                    WaitUntil = WaitUntilState.NetworkIdle,
+                    Timeout = 30000
+                });
+                var violations = await AnalyzeSinglePageAsync(subPage);
+                foreach (var v in violations)
+                    v.PageUrl = subpageUrl;
+                allViolations.AddRange(violations);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Skip subpages that fail to load
+            }
+            finally
+            {
+                await subPage.CloseAsync();
+            }
+        }
+
+        return allViolations;
+    }
+
+    internal static List<string> ExtractSubpageLinks(string baseUrl, IEnumerable<string> hrefs, int maxSubpages = 4)
+    {
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri))
+            return [];
+
+        var baseDomain = StripWww(baseUri.Host);
+        var basePath = baseUri.GetLeftPart(UriPartial.Path).TrimEnd('/');
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var links = new List<string>();
+
+        foreach (var href in hrefs)
+        {
+            if (links.Count >= maxSubpages) break;
+            if (!Uri.TryCreate(href, UriKind.Absolute, out var uri)) continue;
+            if (uri.Scheme != "http" && uri.Scheme != "https") continue;
+            if (!StripWww(uri.Host).Equals(baseDomain, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var normalized = uri.GetLeftPart(UriPartial.Path).TrimEnd('/');
+            if (normalized.Equals(basePath, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!seen.Add(normalized)) continue;
+
+            links.Add(normalized);
+        }
+
+        return links;
+    }
+
+    private static string StripWww(string host) =>
+        host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
+
+    private async Task<List<AccessibilityViolation>> AnalyzeSinglePageAsync(IPage page)
+    {
+        await page.AddScriptTagAsync(new PageAddScriptTagOptions
+        {
+            Content = AxeScript.Value
+        });
+
+        var resultsJson = await page.EvaluateAsync<JsonElement>("() => axe.run().then(r => r)");
+        var violations = ParseViolations(resultsJson);
+
+        var headingViolations = await CheckHeadingHierarchyAsync(page);
+        violations.AddRange(headingViolations);
+
+        var skipNavViolation = await CheckSkipNavigationAsync(page);
+        if (skipNavViolation is not null)
+            violations.Add(skipNavViolation);
+
+        var formViolations = await CheckFormInputLabelsAsync(page);
+        violations.AddRange(formViolations);
+
+        var svgViolations = await CheckSvgImagesAsync(page);
+        violations.AddRange(svgViolations);
+
+        var tabindexViolations = await CheckTabindexAsync(page);
+        violations.AddRange(tabindexViolations);
+
+        var focusViolations = await CheckFocusVisibleAsync(page);
+        violations.AddRange(focusViolations);
+
+        var reflowViolation = await CheckReflowAsync(page);
+        if (reflowViolation is not null)
+            violations.Add(reflowViolation);
+
+        var trapViolation = await CheckKeyboardTrapAsync(page);
+        if (trapViolation is not null)
+            violations.Add(trapViolation);
+
+        var touchTargetViolations = await CheckTouchTargetSizeAsync(page);
+        violations.AddRange(touchTargetViolations);
+
+        var reducedMotionViolation = await CheckReducedMotionAsync(page);
+        if (reducedMotionViolation is not null)
+            violations.Add(reducedMotionViolation);
+
+        var langViolation = await CheckLangAttributeValidAsync(page);
+        if (langViolation is not null)
+            violations.Add(langViolation);
+
+        var autocompleteViolations = await CheckAutocompleteAsync(page);
+        violations.AddRange(autocompleteViolations);
+
+        var tableViolations = await CheckTableCaptionAsync(page);
+        violations.AddRange(tableViolations);
+
+        var pageTitleViolation = await CheckPageTitleDescriptiveAsync(page);
+        if (pageTitleViolation is not null)
+            violations.Add(pageTitleViolation);
+
+        var selectTextareaViolations = await CheckSelectTextareaLabelsAsync(page);
+        violations.AddRange(selectTextareaViolations);
+
+        var fieldsetViolations = await CheckFieldsetLegendAsync(page);
+        violations.AddRange(fieldsetViolations);
+
+        var ariaLiveViolation = await CheckAriaLiveAsync(page);
+        if (ariaLiveViolation is not null)
+            violations.Add(ariaLiveViolation);
+
+        var focusContextViolations = await CheckFocusContextChangeAsync(page);
+        violations.AddRange(focusContextViolations);
+
+        var errorIdentificationViolations = await CheckErrorIdentificationAsync(page);
+        violations.AddRange(errorIdentificationViolations);
+
+        return violations;
     }
 
     internal static List<AccessibilityViolation> ParseViolations(JsonElement results)
