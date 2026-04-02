@@ -27,6 +27,7 @@ Thumbs.db
 .env.*.local
 
 # .NET
+appsettings.Development.json
 [Bb]in/
 [Oo]bj/
 **/bin/

@@ -18,6 +18,8 @@ public class AnalysisProcessorTests : IDisposable
     private readonly AppDbContext _context;
     private readonly AnalysisRepository _repository;
     private readonly Mock<IAccessibilityAnalyzer> _analyzerMock;
+    private readonly Mock<IPdfReportGenerator> _pdfMock;
+    private readonly Mock<IEmailSender> _emailMock;
     private readonly AnalysisProcessor _processor;
 
     public AnalysisProcessorTests()
@@ -34,7 +36,11 @@ public class AnalysisProcessorTests : IDisposable
 
         _repository = new AnalysisRepository(_context);
         _analyzerMock = new Mock<IAccessibilityAnalyzer>();
-        _processor = new AnalysisProcessor(_repository, _analyzerMock.Object);
+        _pdfMock = new Mock<IPdfReportGenerator>();
+        _pdfMock.Setup(p => p.Generate(It.IsAny<WcagAnalyzer.Application.Features.Analysis.Queries.GetAnalysisByIdResult>())).Returns([]);
+        _pdfMock.Setup(p => p.CalculateScore(It.IsAny<WcagAnalyzer.Application.Features.Analysis.Queries.GetAnalysisByIdResult>())).Returns(100);
+        _emailMock = new Mock<IEmailSender>();
+        _processor = new AnalysisProcessor(_repository, _analyzerMock.Object, _pdfMock.Object, _emailMock.Object);
     }
 
     public void Dispose()
@@ -155,7 +161,7 @@ public class AnalysisProcessorTests : IDisposable
                 return Task.FromResult<IReadOnlyList<AccessibilityViolation>>(new List<AccessibilityViolation>());
             });
 
-        var processor = new AnalysisProcessor(repoMock.Object, _analyzerMock.Object);
+        var processor = new AnalysisProcessor(repoMock.Object, _analyzerMock.Object, _pdfMock.Object, _emailMock.Object);
         await processor.ProcessAsync(request.Id, CancellationToken.None);
 
         statusDuringAnalysis.Should().Be(AnalysisStatus.InProgress);

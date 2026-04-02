@@ -5,6 +5,7 @@ using WcagAnalyzer.Application.Features.Analysis.Queries;
 using WcagAnalyzer.Application.Services;
 using WcagAnalyzer.Domain.Repositories;
 using WcagAnalyzer.Infrastructure.Data;
+using Resend;
 using WcagAnalyzer.Infrastructure.Repositories;
 using WcagAnalyzer.Infrastructure.Services;
 
@@ -29,6 +30,13 @@ builder.Services.AddHostedService<AnalysisBackgroundService>();
 
 // PDF report
 builder.Services.AddScoped<IPdfReportGenerator, PdfReportGenerator>();
+
+// Email
+builder.Services.AddHttpClient();
+builder.Services.Configure<ResendClientOptions>(options =>
+    options.ApiToken = builder.Configuration["Resend:ApiKey"] ?? string.Empty);
+builder.Services.AddTransient<IResend, ResendClient>();
+builder.Services.AddScoped<IEmailSender, ResendEmailSender>();
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
