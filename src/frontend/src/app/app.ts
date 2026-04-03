@@ -18,7 +18,6 @@ export class App {
   message = signal('');
   messageType = signal<'success' | 'error'>('success');
   isLoading = signal(false);
-  analysisId = signal<string | null>(null);
 
   // Only allow https://, block http://
   private urlPattern = /^https:\/\/([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
@@ -113,7 +112,6 @@ export class App {
         next: (res) => {
           this.messageType.set('success');
           this.message.set(`Analysis submitted! You will receive the report at ${emailValue}`);
-          this.analysisId.set(res.id);
           this.isLoading.set(false);
         },
         error: (err) => {
