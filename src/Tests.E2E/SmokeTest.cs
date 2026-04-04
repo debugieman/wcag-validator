@@ -43,4 +43,17 @@
           await Expect(emailInput).ToBeVisibleAsync();
           await Expect(urlInput).ToBeVisibleAsync();
       }
+
+      [Fact]
+      public async Task SmokeTest_DeepScanRadio_ShouldBeCheckedAfterClick()
+      {
+          await _page.GotoAsync("http://localhost:4200");
+
+          var deepScanRadio = _page.Locator("input[type='radio'][value='deep']");
+          await deepScanRadio.WaitForAsync();
+
+          await deepScanRadio.ClickAsync();
+
+          await Expect(deepScanRadio).ToBeCheckedAsync();
+      }
   }
