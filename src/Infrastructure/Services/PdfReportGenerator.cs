@@ -142,6 +142,9 @@ public class PdfReportGenerator : IPdfReportGenerator
         return document.GeneratePdf();
     }
 
+    public int CalculateScore(GetAnalysisByIdResult analysis) =>
+        CalculateScore(analysis.Results.ToList());
+
     private static void ComposeCoverPage(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
     {
         var allResults = analysis.Results.ToList();
