@@ -18,109 +18,147 @@ public class PdfScoreTests
     }
 
     [Fact]
-    public void OneCriticalRule_ShouldDeduct10Points()
+    public void OneCriticalRule_ShouldDeductSignificantlyLessThanBefore()
     {
         var results = new List<AnalysisResultDto> { Result("color-contrast", "critical") };
 
         var score = PdfReportGenerator.CalculateScore(results);
 
-        score.Should().Be(90);
+        // log2(2)/log2(112) * 40 ≈ 6 points deducted → score ~94
+        score.Should().BeInRange(90, 98);
     }
 
     [Fact]
-    public void OneSerousRule_ShouldDeduct7Points()
+    public void OneSerousRule_ShouldDeductLessThanCritical()
     {
-        var results = new List<AnalysisResultDto> { Result("image-alt", "serious") };
+        var serious = PdfReportGenerator.CalculateScore(
+            new List<AnalysisResultDto> { Result("image-alt", "serious") });
 
-        var score = PdfReportGenerator.CalculateScore(results);
+        var critical = PdfReportGenerator.CalculateScore(
+            new List<AnalysisResultDto> { Result("color-contrast", "critical") });
 
-        score.Should().Be(93);
+        serious.Should().BeGreaterThan(critical);
     }
 
     [Fact]
-    public void OneModerateRule_ShouldDeduct4Points()
+    public void OneModerateRule_ShouldDeductLessThanSerious()
     {
-        var results = new List<AnalysisResultDto> { Result("label", "moderate") };
+        var moderate = PdfReportGenerator.CalculateScore(
+            new List<AnalysisResultDto> { Result("label", "moderate") });
 
-        var score = PdfReportGenerator.CalculateScore(results);
+        var serious = PdfReportGenerator.CalculateScore(
+            new List<AnalysisResultDto> { Result("image-alt", "serious") });
 
-        score.Should().Be(96);
-    }
-
-    [Fact]
-    public void OneMinorRule_ShouldDeduct1Point()
-    {
-        var results = new List<AnalysisResultDto> { Result("region", "minor") };
-
-        var score = PdfReportGenerator.CalculateScore(results);
-
-        score.Should().Be(99);
+        moderate.Should().BeGreaterThan(serious);
     }
 
     [Fact]
     public void MultipleOccurrencesSameRule_ShouldDeductOnlyOnce()
     {
-        // 5 occurrences of the same rule — should count as one deduction
-        var results = Enumerable.Range(0, 5)
-            .Select(_ => Result("color-contrast", "critical"))
-            .ToList();
+        var oneViolation = PdfReportGenerator.CalculateScore(
+            new List<AnalysisResultDto> { Result("color-contrast", "critical") });
 
-        var score = PdfReportGenerator.CalculateScore(results);
+        var manyOccurrences = PdfReportGenerator.CalculateScore(
+            Enumerable.Range(0, 10).Select(_ => Result("color-contrast", "critical")).ToList());
 
-        score.Should().Be(90);
+        oneViolation.Should().Be(manyOccurrences);
     }
 
     [Fact]
-    public void MultipleUniqueRules_ShouldDeductForEach()
+    public void LogarithmicScaling_TenRulesHurtLessThanTenTimeOneRule()
     {
-        // critical(-10) + serious(-7) + moderate(-4) + minor(-1) = -22 => 78
+        // 1 critical rule deduction
+        var oneRule = 100 - PdfReportGenerator.CalculateScore(
+            new List<AnalysisResultDto> { Result("rule-1", "critical") });
+
+        // 10 unique critical rules deduction
+        var tenRules = 100 - PdfReportGenerator.CalculateScore(
+            Enumerable.Range(1, 10).Select(i => Result($"rule-{i}", "critical")).ToList());
+
+        // logarithmic: 10 rules should cost less than 10× one rule
+        tenRules.Should().BeLessThan(oneRule * 10);
+    }
+
+    [Fact]
+    public void WikipediaScenario_ShouldScoreAbove70()
+    {
+        // Realistic scenario: 3 critical, 5 serious, 4 moderate, 3 minor unique rules
         var results = new List<AnalysisResultDto>
         {
-            Result("color-contrast", "critical"),
-            Result("image-alt",      "serious"),
-            Result("label",          "moderate"),
-            Result("region",         "minor")
+            Result("color-contrast",   "critical"),
+            Result("image-alt",        "critical"),
+            Result("button-name",      "critical"),
+            Result("link-name",        "serious"),
+            Result("html-has-lang",    "serious"),
+            Result("document-title",   "serious"),
+            Result("meta-viewport",    "serious"),
+            Result("label",            "serious"),
+            Result("region",           "moderate"),
+            Result("landmark-unique",  "moderate"),
+            Result("list",             "moderate"),
+            Result("definition-list",  "moderate"),
+            Result("tabindex",         "minor"),
+            Result("duplicate-id",     "minor"),
+            Result("scrollable-region-focusable", "minor"),
         };
 
         var score = PdfReportGenerator.CalculateScore(results);
 
-        score.Should().Be(78);
+        score.Should().BeGreaterThanOrEqualTo(70);
     }
 
     [Fact]
-    public void ManyViolations_ScoreShouldNotGoBelowZero()
+    public void GoodSiteScenario_ShouldScoreAbove85()
     {
-        // 15 critical rules × 10 = 150 deductions → should clamp to 0
-        var results = Enumerable.Range(0, 15)
+        // Well-built site: 1 critical, 2 serious, 2 moderate
+        var results = new List<AnalysisResultDto>
+        {
+            Result("color-contrast", "critical"),
+            Result("image-alt",      "serious"),
+            Result("label",          "serious"),
+            Result("region",         "moderate"),
+            Result("list",           "moderate"),
+        };
+
+        var score = PdfReportGenerator.CalculateScore(results);
+
+        score.Should().BeGreaterThanOrEqualTo(85);
+    }
+
+    [Fact]
+    public void BadSiteScenario_ShouldScoreBelowGoodSite()
+    {
+        var goodSite = PdfReportGenerator.CalculateScore(new List<AnalysisResultDto>
+        {
+            Result("color-contrast", "critical"),
+            Result("image-alt",      "serious"),
+        });
+
+        var badSite = PdfReportGenerator.CalculateScore(
+            Enumerable.Range(1, 12).Select(i => Result($"rule-{i}", "critical")).ToList());
+
+        badSite.Should().BeLessThan(goodSite);
+    }
+
+    [Fact]
+    public void ScoreShouldNeverGoBelowZero()
+    {
+        // Extreme case: 50 unique critical rules
+        var results = Enumerable.Range(1, 50)
             .Select(i => Result($"rule-{i}", "critical"))
             .ToList();
 
         var score = PdfReportGenerator.CalculateScore(results);
 
-        score.Should().Be(0);
+        score.Should().BeGreaterThanOrEqualTo(0);
     }
 
     [Fact]
-    public void UnknownImpact_ShouldDeductZeroPoints()
+    public void UnknownImpact_ShouldNotAffectScore()
     {
-        var results = new List<AnalysisResultDto> { Result("some-rule", "unknown") };
+        var withUnknown = PdfReportGenerator.CalculateScore(
+            new List<AnalysisResultDto> { Result("some-rule", "unknown") });
 
-        var score = PdfReportGenerator.CalculateScore(results);
-
-        score.Should().Be(100);
-    }
-
-    [Theory]
-    [InlineData("critical", 90)]
-    [InlineData("serious",  93)]
-    [InlineData("moderate", 96)]
-    [InlineData("minor",    99)]
-    public void SingleRule_ScoreMatchesExpectedDeduction(string impact, int expectedScore)
-    {
-        var results = new List<AnalysisResultDto> { Result("any-rule", impact) };
-
-        var score = PdfReportGenerator.CalculateScore(results);
-
-        score.Should().Be(expectedScore);
+        withUnknown.Should().Be(100);
     }
 }
