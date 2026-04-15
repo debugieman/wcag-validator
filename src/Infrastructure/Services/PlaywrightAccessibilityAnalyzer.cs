@@ -1086,7 +1086,6 @@ public class PlaywrightAccessibilityAnalyzer : IAccessibilityAnalyzer
     private static async Task<List<AccessibilityViolation>> CheckFocusContextChangeAsync(IPage page)
     {
         var initialUrl = page.Url;
-        var focusableSelectors = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex=\"0\"]";
 
         var elementsJson = await page.EvaluateAsync<JsonElement>("""
             () => {
