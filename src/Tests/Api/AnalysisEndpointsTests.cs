@@ -230,4 +230,20 @@ public class AnalysisEndpointsTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
+
+    [Fact]
+    public async Task PostAnalysis_WithDeepScanTrue_ShouldReturnDeepScanTrue()
+    {
+        var payload = new { url = "https://deep-scan-test.com", email = "deep@test.com", deepScan = true };
+
+        var response = await _client.PostAsJsonAsync("/api/analysis", payload);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+        var getResponse = await _client.GetAsync($"/api/analysis/{id}");
+        var content = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        content.GetProperty("deepScan").GetBoolean().Should().BeTrue();
+    }
 }

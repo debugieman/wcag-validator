@@ -145,7 +145,6 @@ public class PdfReportGenerator : IPdfReportGenerator
     public int CalculateScore(GetAnalysisByIdResult analysis) =>
         CalculateScore(analysis.Results.ToList());
 
-
     private static void ComposeCoverPage(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
     {
         var allResults = analysis.Results.ToList();
@@ -330,18 +329,27 @@ public class PdfReportGenerator : IPdfReportGenerator
 
     internal static int CalculateScore(List<AnalysisResultDto> results)
     {
-        var deductions = results
-            .GroupBy(r => r.RuleId)
-            .Sum(g => g.First().Impact switch
-            {
-                "critical" => 10,
-                "serious"  => 7,
-                "moderate" => 4,
-                "minor"    => 1,
-                _          => 0
-            });
+        const int totalRules = 111;
 
-        return Math.Max(0, 100 - deductions);
+        var uniqueByImpact = results
+            .GroupBy(r => r.RuleId)
+            .GroupBy(g => g.First().Impact)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        int critical = uniqueByImpact.GetValueOrDefault("critical", 0);
+        int serious  = uniqueByImpact.GetValueOrDefault("serious",  0);
+        int moderate = uniqueByImpact.GetValueOrDefault("moderate", 0);
+        int minor    = uniqueByImpact.GetValueOrDefault("minor",    0);
+
+        double logBase = Math.Log2(totalRules + 1);
+
+        double penalty =
+            40 * Math.Log2(1 + critical)  / logBase +
+            25 * Math.Log2(1 + serious)   / logBase +
+            12 * Math.Log2(1 + moderate)  / logBase +
+             4 * Math.Log2(1 + minor)     / logBase;
+
+        return (int)Math.Round(Math.Max(0, 100 - penalty));
     }
 
     private static void ComposeContent(IContainer container, GetAnalysisByIdResult analysis)
