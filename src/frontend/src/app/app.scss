@@ -1,20 +1,167 @@
+// ─── Hero Section ───────────────────────────────────────────────────────────
+
+.hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+  color: white;
+  padding: 5rem 2rem 4rem;
+}
+
+.hero-container {
+  max-width: 860px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hero-badge {
+  display: inline-block;
+  background: rgba(67, 97, 238, 0.3);
+  border: 1px solid rgba(67, 97, 238, 0.6);
+  color: #a5b4fc;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  margin-bottom: 1.5rem;
+}
+
+.hero-title {
+  font-size: 2.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 1.25rem;
+  color: white;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  max-width: 640px;
+  margin: 0 auto 3rem;
+  line-height: 1.7;
+
+  strong {
+    color: #e2e8f0;
+  }
+}
+
+// ─── Stats ───────────────────────────────────────────────────────────────────
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 3.5rem;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 140px;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #4361ee;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+// ─── What is WCAG ────────────────────────────────────────────────────────────
+
+.what-is-wcag {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  text-align: left;
+
+  h2 {
+    font-size: 1.3rem;
+    color: white;
+    margin: 0 0 0.75rem;
+  }
+
+  p {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin: 0 0 1.5rem;
+
+    strong {
+      color: #e2e8f0;
+    }
+  }
+}
+
+.wcag-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wcag-level {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+
+  .level-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  strong {
+    color: #e2e8f0;
+  }
+
+  span {
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  &.critical .level-dot { background: #ef4444; }
+  &.serious  .level-dot { background: #f97316; }
+  &.moderate .level-dot { background: #eab308; }
+  &.minor    .level-dot { background: #64748b; }
+}
+
+// ─── Analyzer Form ───────────────────────────────────────────────────────────
+
 .main {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
   background: #f5f5f5;
+  padding: 4rem 2rem;
 }
 
 .container {
   text-align: center;
   max-width: 600px;
   width: 100%;
-  padding: 2rem;
 }
 
-h1 {
-  font-size: 2.5rem;
+.form-title {
+  font-size: 1.8rem;
   color: #1a1a2e;
   margin: 0 0 0.5rem;
 }
@@ -22,7 +169,7 @@ h1 {
 .subtitle {
   color: #666;
   margin: 0 0 2rem;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .email-field {
@@ -154,5 +301,21 @@ h1 {
   &.error {
     background: #fce4ec;
     color: #c62828;
+  }
+}
+
+// ─── Responsive ──────────────────────────────────────────────────────────────
+
+@media (max-width: 600px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .stats {
+    gap: 1.5rem;
+  }
+
+  .what-is-wcag {
+    padding: 1.5rem;
   }
 }
