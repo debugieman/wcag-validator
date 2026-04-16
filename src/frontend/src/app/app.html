@@ -1,10 +1,13 @@
 <section class="hero">
   <div class="hero-container">
+
     <div class="hero-badge">Web Accessibility Compliance</div>
-    <h1 class="hero-title">Is your website accessible<br>to everyone?</h1>
+
+    <h1 class="hero-title">Is your website<br>accessible to everyone?</h1>
+
     <p class="hero-subtitle">
-      From June 28, 2025, the <strong>European Accessibility Act (EAA)</strong> requires
-      businesses to meet WCAG 2.1 standards — or face fines up to <strong>€100,000</strong>.
+      From <strong>June 28, 2025</strong>, the European Accessibility Act requires businesses
+      to meet WCAG 2.1 standards — or face fines up to <strong>€100,000</strong>.
       In the US, ADA lawsuits over inaccessible websites exceeded <strong>4,000 cases in 2023</strong>.
     </p>
 
@@ -15,110 +18,143 @@
         <span class="stat-number">4,000+</span>
         <span class="stat-label">ADA lawsuits in the US (2023)</span>
       </div>
+      <div class="stat-divider"></div>
       <div class="stat">
         <span class="stat-number">€100k</span>
         <span class="stat-label">Max fine under EAA in the EU</span>
       </div>
+      <div class="stat-divider"></div>
       <div class="stat">
-        <span class="stat-number">June 2025</span>
+        <span class="stat-number">Jun 2025</span>
         <span class="stat-label">EAA enforcement deadline</span>
       </div>
     </div>
 
-    <div class="what-is-wcag">
-      <h2>What is WCAG?</h2>
+  </div>
+</section>
+
+<section class="what-is-wcag">
+  <div class="wcag-container">
+    <div class="wcag-text">
+      <span class="section-label">What is WCAG?</span>
+      <h2>The global standard<br>for web accessibility</h2>
       <p>
-        The <strong>Web Content Accessibility Guidelines (WCAG)</strong> are the international
-        standard for web accessibility, published by the W3C. They define how to make websites
-        usable for people with visual, hearing, motor, or cognitive disabilities.
+        The <strong>Web Content Accessibility Guidelines (WCAG)</strong> are published
+        by the W3C and define how to make websites usable for people with visual,
+        hearing, motor, or cognitive disabilities.
       </p>
-      <div class="wcag-levels">
-        <div class="wcag-level critical">
+      <p>
+        Violations are categorised by severity. Each unresolved issue increases
+        your legal exposure and excludes users from your service.
+      </p>
+    </div>
+
+    <div class="wcag-levels">
+      <div class="wcag-level critical">
+        <div class="level-header">
           <span class="level-dot"></span>
-          <div>
-            <strong>Critical</strong>
-            <span>Blocks access entirely — e.g. images without alt text, forms without labels</span>
-          </div>
+          <strong>Critical</strong>
         </div>
-        <div class="wcag-level serious">
+        <p>Blocks access entirely — e.g. images without alt text, forms without labels</p>
+      </div>
+      <div class="wcag-level serious">
+        <div class="level-header">
           <span class="level-dot"></span>
-          <div>
-            <strong>Serious</strong>
-            <span>Significantly impairs usability — e.g. insufficient color contrast</span>
-          </div>
+          <strong>Serious</strong>
         </div>
-        <div class="wcag-level moderate">
+        <p>Significantly impairs usability — e.g. insufficient color contrast</p>
+      </div>
+      <div class="wcag-level moderate">
+        <div class="level-header">
           <span class="level-dot"></span>
-          <div>
-            <strong>Moderate</strong>
-            <span>Creates obstacles but workarounds exist — e.g. missing landmarks</span>
-          </div>
+          <strong>Moderate</strong>
         </div>
-        <div class="wcag-level minor">
+        <p>Creates obstacles but workarounds exist — e.g. missing landmarks</p>
+      </div>
+      <div class="wcag-level minor">
+        <div class="level-header">
           <span class="level-dot"></span>
-          <div>
-            <strong>Minor</strong>
-            <span>Minor inconvenience — e.g. redundant links, non-critical warnings</span>
-          </div>
+          <strong>Minor</strong>
         </div>
+        <p>Minor inconvenience — e.g. redundant links, non-critical warnings</p>
       </div>
     </div>
   </div>
 </section>
 
 <main class="main" id="analyzer">
-  <div class="container">
-    <h2 class="form-title">Analyze your website now</h2>
-    <p class="subtitle">Get a detailed PDF report delivered to your inbox</p>
+  <div class="analyzer-card">
+    <div class="analyzer-header">
+      <h2>Analyze your website</h2>
+      <p>Get a detailed PDF report delivered to your inbox</p>
+    </div>
 
-    <input
-      class="email-field"
-      type="email"
-      placeholder="your@email.com"
-      [value]="email()"
-      (input)="email.set($any($event.target).value)"
-      (keydown.enter)="onAnalyze()"
-    />
+    <div class="analyzer-body">
+      <div class="field-group">
+        <label class="field-label">Email address</label>
+        <input
+          class="field-input"
+          type="email"
+          placeholder="your@email.com"
+          [value]="email()"
+          (input)="email.set($any($event.target).value)"
+          (keydown.enter)="onAnalyze()"
+        />
+      </div>
 
-    <div class="url-form">
-      <input
-        type="url"
-        placeholder="https://example.com"
-        [value]="url()"
-        (input)="url.set($any($event.target).value)"
-        (keydown.enter)="onAnalyze()"
-      />
-      <button (click)="onAnalyze()" [disabled]="isLoading() || !isFormReady()">
-        {{ isLoading() ? 'Analyzing...' : 'Analyze' }}
+      <div class="field-group">
+        <label class="field-label">Website URL</label>
+        <div class="url-row">
+          <input
+            class="field-input"
+            type="url"
+            placeholder="https://example.com"
+            [value]="url()"
+            (input)="url.set($any($event.target).value)"
+            (keydown.enter)="onAnalyze()"
+          />
+        </div>
+      </div>
+
+      <div class="scan-mode">
+        <label class="scan-option" [class.selected]="scanMode() === 'quick'">
+          <input type="radio" name="scanMode" value="quick"
+                 [checked]="scanMode() === 'quick'"
+                 (change)="scanMode.set('quick')" />
+          <div class="scan-option-content">
+            <div class="scan-option-top">
+              <span class="scan-option-title">Quick Check</span>
+              <span class="scan-price">$4.99</span>
+            </div>
+            <span class="scan-option-desc">Single page analysis</span>
+          </div>
+        </label>
+
+        <label class="scan-option" [class.selected]="scanMode() === 'deep'">
+          <input type="radio" name="scanMode" value="deep"
+                 [checked]="scanMode() === 'deep'"
+                 (change)="scanMode.set('deep')" />
+          <div class="scan-option-content">
+            <div class="scan-option-top">
+              <span class="scan-option-title">Deep Scan</span>
+              <span class="scan-price">$9.99</span>
+            </div>
+            <span class="scan-option-desc">Main page + up to 5 subpages</span>
+          </div>
+        </label>
+      </div>
+
+      <button
+        class="analyze-btn"
+        (click)="onAnalyze()"
+        [disabled]="isLoading() || !isFormReady()">
+        {{ isLoading() ? 'Analyzing...' : 'Get my report' }}
       </button>
+
+      @if (message()) {
+        <p class="message" [class.error]="messageType() === 'error'">{{ message() }}</p>
+      }
     </div>
-
-    <div class="scan-mode">
-      <label class="scan-option" [class.selected]="scanMode() === 'quick'">
-        <input type="radio" name="scanMode" value="quick"
-               [checked]="scanMode() === 'quick'"
-               (change)="scanMode.set('quick')" />
-        <div class="scan-option-content">
-          <span class="scan-option-title">Quick Check <span class="scan-price">$4.99</span></span>
-          <span class="scan-option-desc">One page, instant results</span>
-        </div>
-      </label>
-
-      <label class="scan-option" [class.selected]="scanMode() === 'deep'">
-        <input type="radio" name="scanMode" value="deep"
-               [checked]="scanMode() === 'deep'"
-               (change)="scanMode.set('deep')" />
-        <div class="scan-option-content">
-          <span class="scan-option-title">Deep Scan <span class="scan-price">$9.99</span></span>
-          <span class="scan-option-desc">Main page + up to 5 subpages</span>
-        </div>
-      </label>
-    </div>
-
-    @if (message()) {
-      <p class="message" [class.error]="messageType() === 'error'">{{ message() }}</p>
-    }
-
   </div>
 </main>
 
