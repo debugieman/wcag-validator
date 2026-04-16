@@ -67,6 +67,10 @@ export class App {
     }
   }
 
+  scrollToAnalyzer() {
+    document.getElementById('analyzer')?.scrollIntoView({ behavior: 'smooth' });
+  }
+
   onAnalyze() {
     const emailValue = this.email().trim();
 

@@ -8,6 +8,8 @@
       In the US, ADA lawsuits over inaccessible websites exceeded <strong>4,000 cases in 2023</strong>.
     </p>
 
+    <a class="hero-cta" (click)="scrollToAnalyzer()">Check my website ↓</a>
+
     <div class="stats">
       <div class="stat">
         <span class="stat-number">4,000+</span>
@@ -64,7 +66,7 @@
   </div>
 </section>
 
-<main class="main">
+<main class="main" id="analyzer">
   <div class="container">
     <h2 class="form-title">Analyze your website now</h2>
     <p class="subtitle">Get a detailed PDF report delivered to your inbox</p>
@@ -97,7 +99,7 @@
                [checked]="scanMode() === 'quick'"
                (change)="scanMode.set('quick')" />
         <div class="scan-option-content">
-          <span class="scan-option-title">Quick Check</span>
+          <span class="scan-option-title">Quick Check <span class="scan-price">$4.99</span></span>
           <span class="scan-option-desc">One page, instant results</span>
         </div>
       </label>
@@ -107,7 +109,7 @@
                [checked]="scanMode() === 'deep'"
                (change)="scanMode.set('deep')" />
         <div class="scan-option-content">
-          <span class="scan-option-title">Deep Scan</span>
+          <span class="scan-option-title">Deep Scan <span class="scan-price">$9.99</span></span>
           <span class="scan-option-desc">Main page + up to 5 subpages</span>
         </div>
       </label>
