@@ -1,3 +1,16 @@
+// ─── Animations ──────────────────────────────────────────────────────────────
+
+.fade-in {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease-out, transform 0.55s ease-out;
+
+  &.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 // ─── Reset / Base ─────────────────────────────────────────────────────────────
 
 * {

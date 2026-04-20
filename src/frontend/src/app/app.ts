@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, AfterViewInit, ElementRef, NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { RouterOutlet } from '@angular/router';
@@ -9,8 +9,10 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App {
+export class App implements AfterViewInit {
   private http = inject(HttpClient);
+  private el = inject(ElementRef);
+  private zone = inject(NgZone);
 
   url = signal('');
   email = signal('');
@@ -19,11 +21,9 @@ export class App {
   messageType = signal<'success' | 'error'>('success');
   isLoading = signal(false);
 
-  // Only allow https://, block http://
   private urlPattern = /^https:\/\/([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
   private emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-  // Block private/internal IP ranges and localhost (SSRF protection)
   private blockedHosts = [
     /^localhost$/i,
     /^127\.\d+\.\d+\.\d+$/,
@@ -33,6 +33,70 @@ export class App {
     /^\[?::1\]?$/,
     /^0\.0\.0\.0$/
   ];
+
+  ngAfterViewInit() {
+    this.zone.runOutsideAngular(() => {
+      this.initFadeInObserver();
+      this.initCounterObserver();
+    });
+  }
+
+  private initFadeInObserver() {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+
+    this.el.nativeElement.querySelectorAll('.fade-in').forEach((el: Element) => {
+      observer.observe(el);
+    });
+  }
+
+  private initCounterObserver() {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            const target = Number(el.dataset['target']);
+            const suffix = el.dataset['suffix'] ?? '';
+            const prefix = el.dataset['prefix'] ?? '';
+            this.animateCounter(el, target, prefix, suffix);
+            observer.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    this.el.nativeElement.querySelectorAll('.counter').forEach((el: Element) => {
+      observer.observe(el);
+    });
+  }
+
+  private animateCounter(el: HTMLElement, target: number, prefix: string, suffix: string) {
+    const duration = 1600;
+    const start = performance.now();
+
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(eased * target);
+      el.textContent = prefix + current.toLocaleString() + suffix;
+
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+
+    requestAnimationFrame(tick);
+  }
 
   isValidUrl(): boolean {
     const trimmed = this.url().trim();
@@ -57,7 +121,6 @@ export class App {
   private normalizeUrl(url: string): string {
     try {
       const parsed = new URL(url.trim());
-      // Remove trailing slash from pathname unless it's just "/"
       if (parsed.pathname.length > 1 && parsed.pathname.endsWith('/')) {
         parsed.pathname = parsed.pathname.replace(/\/+$/, '');
       }
@@ -113,7 +176,7 @@ export class App {
 
     this.http.post<any>('/api/analysis', { url: normalizedUrl, email: emailValue, deepScan: this.scanMode() === 'deep' })
       .subscribe({
-        next: (res) => {
+        next: () => {
           this.messageType.set('success');
           this.message.set(`Analysis submitted! You will receive the report at ${emailValue}`);
           this.isLoading.set(false);
