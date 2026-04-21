@@ -355,6 +355,7 @@ public class PdfReportGenerator : IPdfReportGenerator
     private static void ComposeContent(IContainer container, GetAnalysisByIdResult analysis)
     {
         var allResults = analysis.Results.ToList();
+        var score = CalculateScore(allResults);
 
         container.PaddingTop(16).Column(col =>
         {
@@ -368,6 +369,8 @@ public class PdfReportGenerator : IPdfReportGenerator
                 col.Item().Padding(20).AlignCenter()
                     .Text("No accessibility violations found.")
                     .FontSize(13).Bold().FontColor("#388E3C");
+                col.Item().PaddingTop(20);
+                col.Item().Element(c => ComposeConclusion(c, allResults, score, analysis.Url));
                 return;
             }
 
@@ -394,6 +397,9 @@ public class PdfReportGenerator : IPdfReportGenerator
                     col.Item().PaddingTop(16);
                 }
             }
+
+            col.Item().PaddingTop(20);
+            col.Item().Element(c => ComposeConclusion(c, allResults, score, analysis.Url));
         });
     }
 
@@ -660,6 +666,78 @@ public class PdfReportGenerator : IPdfReportGenerator
                     });
                 });
             }
+        });
+    }
+
+    private static void ComposeConclusion(IContainer container, List<AnalysisResultDto> results, int score, string url)
+    {
+        var critical = results.Count(r => r.Impact == "critical");
+        var serious  = results.Count(r => r.Impact == "serious");
+        var moderate = results.Count(r => r.Impact == "moderate");
+        var uniqueRules = results.Select(r => r.RuleId).Distinct().Count();
+
+        var host = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : url;
+
+        string opening = score >= 85
+            ? $"Overall, {host} is in good shape. Most users, including those relying on screen readers, keyboard navigation, or voice control, should be able to use your website without major barriers."
+            : score >= 65
+            ? $"Your website has a reasonable accessibility baseline, but there are issues that need attention before you can consider it WCAG 2.1 AA compliant. Some users with disabilities are likely to encounter friction."
+            : score >= 40
+            ? $"Your website has significant accessibility barriers. People who rely on screen readers, keyboard-only navigation, or high-contrast settings are likely to struggle — or be completely blocked in some areas."
+            : $"Your website has serious accessibility problems. A meaningful portion of users with disabilities cannot access key parts of your content. This represents both a usability failure and a legal compliance risk.";
+
+        string legalNote = (critical > 0 || serious > 0)
+            ? $"With {critical} critical and {serious} serious violation{(critical + serious == 1 ? "" : "s")}, your site carries elevated legal risk. The EU Accessibility Act (EAA), enforceable since June 2025, and the US ADA both apply to commercially operated websites. Fines under the EAA can reach €100,000. Neither law requires intent — the barrier existing is sufficient."
+            : score < 85
+            ? $"Your critical and serious violation count is low, which reduces immediate legal exposure. However, the {moderate} moderate issue{(moderate == 1 ? "" : "s")} remaining should still be addressed to reach full WCAG 2.1 AA compliance."
+            : "No critical or serious issues were detected. Your legal exposure under the EAA and ADA is low. We recommend re-scanning after significant content updates to maintain compliance.";
+
+        var topIssues = results
+            .GroupBy(r => r.RuleId)
+            .Select(g => new { RuleId = g.Key, Impact = g.First().Impact, Count = g.Count() })
+            .OrderBy(g => ImpactOrder.Keys.ToList().IndexOf(g.Impact))
+            .ThenByDescending(g => g.Count)
+            .Take(3)
+            .ToList();
+
+        string nextSteps = topIssues.Count == 0
+            ? "No immediate actions required. Keep monitoring your site as content changes."
+            : "Focus your next sprint on: " + string.Join(", ", topIssues.Select(t =>
+                FriendlyNames.GetValueOrDefault(t.RuleId, t.RuleId))) + ". " +
+              (uniqueRules > 5
+                ? $"Across {uniqueRules} unique rule violations, these will deliver the highest accessibility improvement per hour of developer time."
+                : "These are the highest-impact issues on your site right now.");
+
+        container.Border(1).BorderColor("#1A237E").Column(col =>
+        {
+            col.Item().Background("#1A237E").Padding(10)
+                .Text("What this means for your website")
+                .FontSize(12).Bold().FontColor(Colors.White);
+
+            col.Item().Padding(14).Column(inner =>
+            {
+                inner.Item().Text(opening)
+                    .FontSize(10).FontColor("#263238").LineHeight(1.5f);
+
+                inner.Item().PaddingTop(10).Text(legalNote)
+                    .FontSize(10).FontColor("#263238").LineHeight(1.5f);
+
+                inner.Item().PaddingTop(10).Text("What to do next")
+                    .FontSize(10).Bold().FontColor("#1A237E");
+
+                inner.Item().PaddingTop(4).Text(nextSteps)
+                    .FontSize(10).FontColor("#263238").LineHeight(1.5f);
+
+                inner.Item().PaddingTop(10).Background("#F8F9FF").Padding(8).Row(row =>
+                {
+                    row.RelativeItem().Text(text =>
+                    {
+                        text.Span("Accessibility is not a one-time fix. ").FontSize(9).Bold().FontColor("#1A237E");
+                        text.Span("Re-scan your site after each major release to catch new issues before they reach your users.")
+                            .FontSize(9).FontColor("#546E7A");
+                    });
+                });
+            });
         });
     }
 
