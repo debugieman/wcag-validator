@@ -1,158 +1,451 @@
-.main {
+// ─── Animations ──────────────────────────────────────────────────────────────
+
+.fade-in {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease-out, transform 0.55s ease-out;
+
+  &.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ─── Reset / Base ─────────────────────────────────────────────────────────────
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #fafafa;
+  color: #1a1a2e;
+}
+
+// ─── Hero ─────────────────────────────────────────────────────────────────────
+
+.hero {
+  background: #fff;
+  border-bottom: 1px solid #ebebeb;
+  padding: 6rem 2rem 5rem;
+}
+
+.hero-container {
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hero-badge {
+  display: inline-block;
+  background: #f0f3ff;
+  color: #4361ee;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  margin-bottom: 1.75rem;
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #0f0f1a;
+  margin: 0 0 1.25rem;
+}
+
+.hero-subtitle {
+  font-size: 1.05rem;
+  color: #555;
+  line-height: 1.75;
+  margin: 0 auto 2.25rem;
+  max-width: 560px;
+
+  strong {
+    color: #0f0f1a;
+    font-weight: 600;
+  }
+}
+
+.hero-cta {
+  display: inline-block;
+  background: #0f0f1a;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.8rem 1.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 3.5rem;
+  transition: background 0.2s, transform 0.15s;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+
+  &:hover {
+    background: #2a2a40;
+    transform: translateY(-1px);
+  }
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+
+.stats {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background: #f5f5f5;
+  gap: 0;
 }
 
-.container {
+.stat {
+  padding: 0 2.5rem;
   text-align: center;
-  max-width: 600px;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 36px;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+
+.stat-number {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0f0f1a;
+  letter-spacing: -0.02em;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.78rem;
+  color: #888;
+  margin-top: 0.2rem;
+}
+
+// ─── What is WCAG ─────────────────────────────────────────────────────────────
+
+.what-is-wcag {
+  background: #fafafa;
+  border-bottom: 1px solid #ebebeb;
+  padding: 5rem 2rem;
+}
+
+.wcag-container {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: start;
+}
+
+.section-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #4361ee;
+  margin-bottom: 1rem;
+}
+
+.wcag-text {
+  h2 {
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: #0f0f1a;
+    margin: 0 0 1.25rem;
+  }
+
+  p {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.75;
+    margin: 0 0 1rem;
+
+    strong {
+      color: #0f0f1a;
+      font-weight: 600;
+    }
+  }
+}
+
+.wcag-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.wcag-level {
+  padding: 1.1rem 0;
+  border-bottom: 1px solid #ebebeb;
+
+  &:first-child {
+    border-top: 1px solid #ebebeb;
+  }
+
+  .level-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .level-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  strong {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0f0f1a;
+  }
+
+  p {
+    font-size: 0.85rem;
+    color: #777;
+    margin: 0;
+    line-height: 1.6;
+    padding-left: 1.4rem;
+  }
+
+  &.critical .level-dot { background: #ef4444; }
+  &.serious  .level-dot { background: #f97316; }
+  &.moderate .level-dot { background: #eab308; }
+  &.minor    .level-dot { background: #94a3b8; }
+}
+
+// ─── Analyzer ────────────────────────────────────────────────────────────────
+
+.main {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 5rem 2rem 6rem;
+  background: #fafafa;
+}
+
+.analyzer-card {
   width: 100%;
-  padding: 2rem;
+  max-width: 520px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
 }
 
-h1 {
-  font-size: 2.5rem;
-  color: #1a1a2e;
-  margin: 0 0 0.5rem;
+.analyzer-header {
+  padding: 2rem 2rem 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+
+  h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #0f0f1a;
+    margin: 0 0 0.3rem;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    font-size: 0.875rem;
+    color: #888;
+    margin: 0;
+  }
 }
 
-.subtitle {
-  color: #666;
-  margin: 0 0 2rem;
-  font-size: 1.1rem;
+.analyzer-body {
+  padding: 1.75rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.email-field {
+// ─── Fields ──────────────────────────────────────────────────────────────────
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #444;
+  letter-spacing: 0.01em;
+}
+
+.field-input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  border: 2px solid #ddd;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.95rem;
+  border: 1.5px solid #e0e0e0;
   border-radius: 8px;
   outline: none;
-  transition: border-color 0.2s;
-  margin-bottom: 0.75rem;
-  box-sizing: border-box;
+  transition: border-color 0.15s;
+  background: #fff;
+  color: #0f0f1a;
 
   &:focus {
     border-color: #4361ee;
   }
 
   &::placeholder {
-    color: #aaa;
+    color: #bbb;
   }
 }
 
-.url-form {
+.url-row {
   display: flex;
   gap: 0.5rem;
-
-  input {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    font-size: 1rem;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    outline: none;
-    transition: border-color 0.2s;
-
-    &:focus {
-      border-color: #4361ee;
-    }
-
-    &::placeholder {
-      color: #aaa;
-    }
-  }
-
-  button {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: white;
-    background: #4361ee;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s;
-
-    &:hover {
-      background: #3a56d4;
-    }
-
-    &:disabled {
-      background: #aaa;
-      cursor: not-allowed;
-    }
-  }
 }
+
+// ─── Scan Mode ───────────────────────────────────────────────────────────────
 
 .scan-mode {
   display: flex;
   gap: 0.75rem;
-  margin-top: 0.75rem;
 }
 
 .scan-option {
   flex: 1;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 2px solid #ddd;
-  border-radius: 8px;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.9rem 1rem;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-  background: white;
-  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  background: #fff;
 
   input[type="radio"] {
     accent-color: #4361ee;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     flex-shrink: 0;
+    margin-top: 3px;
     cursor: pointer;
   }
 
   &.selected {
     border-color: #4361ee;
-    background: #f0f3ff;
+    background: #f5f7ff;
   }
 
   &:hover:not(.selected) {
-    border-color: #b0b8f0;
+    border-color: #c5cef8;
   }
 }
 
 .scan-option-content {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  width: 100%;
+}
+
+.scan-option-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .scan-option-title {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: #0f0f1a;
+}
+
+.scan-price {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #4361ee;
 }
 
 .scan-option-desc {
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 0.78rem;
+  color: #999;
 }
 
-.message {
-  margin-top: 1.5rem;
-  padding: 0.75rem;
-  background: #e8f5e9;
-  color: #2e7d32;
-  border-radius: 8px;
+// ─── Analyze Button ───────────────────────────────────────────────────────────
+
+.analyze-btn {
+  width: 100%;
+  padding: 0.85rem;
   font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+  background: #0f0f1a;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  letter-spacing: 0.01em;
+
+  &:hover {
+    background: #2a2a40;
+  }
+
+  &:disabled {
+    background: #d0d0d0;
+    cursor: not-allowed;
+  }
+}
+
+// ─── Message ─────────────────────────────────────────────────────────────────
+
+.message {
+  padding: 0.75rem 1rem;
+  background: #f0fdf4;
+  color: #15803d;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border: 1px solid #bbf7d0;
+  margin: 0;
 
   &.error {
-    background: #fce4ec;
-    color: #c62828;
+    background: #fff1f2;
+    color: #be123c;
+    border-color: #fecdd3;
+  }
+}
+
+// ─── Responsive ──────────────────────────────────────────────────────────────
+
+@media (max-width: 700px) {
+  .hero-title {
+    font-size: 2.1rem;
+  }
+
+  .stats {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .stat-divider {
+    display: none;
+  }
+
+  .wcag-container {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .main {
+    padding: 3rem 1rem 4rem;
   }
 }
