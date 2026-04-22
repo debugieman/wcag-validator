@@ -1,11 +1,11 @@
 import { Component, inject, signal, computed, AfterViewInit, ElementRef, NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, FormsModule],
+  imports: [RouterOutlet, RouterLink, FormsModule],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -13,6 +13,8 @@ export class App implements AfterViewInit {
   private http = inject(HttpClient);
   private el = inject(ElementRef);
   private zone = inject(NgZone);
+
+  currentYear = new Date().getFullYear();
 
   url = signal('');
   email = signal('');
