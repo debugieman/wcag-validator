@@ -77,6 +77,34 @@
   </div>
 </section>
 
+<section class="how-it-works">
+  <div class="hiw-container">
+    <div class="hiw-header fade-in">
+      <span class="section-label">How it works</span>
+      <h2>Three steps to a compliant website</h2>
+    </div>
+    <div class="hiw-steps fade-in">
+      <div class="hiw-step">
+        <div class="hiw-step-number">1</div>
+        <h3>Enter your URL</h3>
+        <p>Paste your website address and email below. Choose a Quick Check for a single page or a Deep Scan for up to 5 pages.</p>
+      </div>
+      <div class="hiw-step-divider"></div>
+      <div class="hiw-step">
+        <div class="hiw-step-number">2</div>
+        <h3>We scan your site</h3>
+        <p>Our engine runs 100+ accessibility checks against WCAG 2.1 AA criteria — covering contrast, labels, keyboard access, structure, and more.</p>
+      </div>
+      <div class="hiw-step-divider"></div>
+      <div class="hiw-step">
+        <div class="hiw-step-number">3</div>
+        <h3>Get your PDF report</h3>
+        <p>A detailed report lands in your inbox within minutes. Every issue is explained in plain English with a priority fix order and legal context.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <main class="main" id="analyzer">
   <div class="analyzer-card fade-in">
     <div class="analyzer-header">
@@ -150,5 +178,58 @@
     </div>
   </div>
 </main>
+
+<section class="faq">
+  <div class="faq-container">
+    <div class="faq-header fade-in">
+      <span class="section-label">FAQ</span>
+      <h2>Common questions</h2>
+    </div>
+    <div class="faq-list fade-in">
+      <div class="faq-item">
+        <h3>What exactly do I get in the report?</h3>
+        <p>A PDF with your accessibility score (0–100), a breakdown of every violation by severity (critical, serious, moderate, minor), plain-English descriptions of each issue, real HTML examples from your page, and a prioritised fix order.</p>
+      </div>
+      <div class="faq-item">
+        <h3>How long does the scan take?</h3>
+        <p>A Quick Check typically completes in under 2 minutes. A Deep Scan (up to 5 pages) usually takes 3–5 minutes. You will receive an email as soon as it is ready.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Does this cover WCAG 2.1 AA?</h3>
+        <p>Yes. Our engine checks against WCAG 2.1 Level AA criteria — the standard required by the EU Accessibility Act and referenced by ADA case law.</p>
+      </div>
+      <div class="faq-item">
+        <h3>What if I don't receive the email?</h3>
+        <p>Check your spam folder first. If it's not there within 10 minutes, contact us at <a href="mailto:hello@wcag-analyzer.com">hello@wcag-analyzer.com</a> and we'll resend it.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Is my data secure?</h3>
+        <p>We only store your email and URL to deliver your report. Scan results are deleted after 30 days. We do not sell your data or use it for marketing. Payments are handled by Stripe — we never see your card details.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Can I scan a site I don't own?</h3>
+        <p>Only scan websites you own or have explicit permission to test. By submitting a URL you confirm you have the right to do so.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-brand">
+      <span class="footer-logo">WCAG Analyzer</span>
+      <span class="footer-tagline">Automated accessibility compliance for the web</span>
+    </div>
+    <nav class="footer-links">
+      <a href="mailto:hello@wcag-analyzer.com">Contact</a>
+      <a routerLink="/privacy">Privacy Policy</a>
+      <a routerLink="/terms">Terms of Service</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">
+    <span>© {{ currentYear }} WCAG Analyzer. All rights reserved.</span>
+    <span class="footer-stripe">Payments secured by <strong>Stripe</strong></span>
+  </div>
+</footer>
 
 <router-outlet />
