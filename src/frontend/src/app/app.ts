@@ -176,23 +176,24 @@ export class App implements AfterViewInit {
     this.isLoading.set(true);
     this.message.set('');
 
-    this.http.post<any>('/api/analysis', { url: normalizedUrl, email: emailValue, deepScan: this.scanMode() === 'deep' })
-      .subscribe({
-        next: () => {
-          this.messageType.set('success');
-          this.message.set(`Analysis submitted! You will receive the report at ${emailValue}`);
-          this.isLoading.set(false);
-        },
-        error: (err) => {
-          this.isLoading.set(false);
-          this.messageType.set('error');
+    this.http.post<{ url: string }>('/api/checkout', {
+      url: normalizedUrl,
+      email: emailValue,
+      deepScan: this.scanMode() === 'deep'
+    }).subscribe({
+      next: (res) => {
+        window.location.href = res.url;
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.messageType.set('error');
 
-          if (err.status === 429) {
-            this.message.set('This domain was already analyzed in the last 24 hours. Please try again later.');
-          } else {
-            this.message.set('Something went wrong. Please try again.');
-          }
+        if (err.status === 429) {
+          this.message.set('This domain was already analyzed in the last 24 hours. Please try again later.');
+        } else {
+          this.message.set('Something went wrong. Please try again.');
         }
-      });
+      }
+    });
   }
 }

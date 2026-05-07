@@ -632,6 +632,83 @@ body {
   }
 }
 
+// ─── Success page ────────────────────────────────────────────────────────────
+
+.success-page {
+  background: #fafafa;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.success-container {
+  max-width: 480px;
+  text-align: center;
+
+  h1 {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: #0f0f1a;
+    letter-spacing: -0.02em;
+    margin: 1.25rem 0 1rem;
+  }
+}
+
+.success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #0f0f1a;
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.success-lead {
+  font-size: 1rem;
+  color: #444;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+
+  strong {
+    color: #0f0f1a;
+    font-weight: 600;
+  }
+}
+
+.success-note {
+  font-size: 0.875rem;
+  color: #888;
+  line-height: 1.6;
+  margin: 0 0 2rem;
+
+  a {
+    color: #4361ee;
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.success-btn {
+  display: inline-block;
+  background: #0f0f1a;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.2s;
+
+  &:hover { background: #2a2a40; }
+}
+
 // ─── Legal pages ─────────────────────────────────────────────────────────────
 
 .legal-page {
