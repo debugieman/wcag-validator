@@ -53,4 +53,22 @@ public class SmokeTest_AnalyzeButtonDisabledCombinations : IAsyncLifetime
 
         await Expect(analyzeButton).ToBeDisabledAsync();
     }
+
+    [Fact]
+    public async Task SmokeTest_AnalyzeButton_ShouldBeDisabled_WhenTermsCheckboxIsUnchecked()
+    {
+        await _page.GotoAsync("http://localhost:4200");
+
+        var emailInput = _page.Locator("input[type='email']");
+        var urlInput = _page.Locator("input[type='url']");
+        var analyzeButton = _page.Locator("button", new() { HasText = "Get my report" });
+
+        await emailInput.WaitForAsync();
+        await urlInput.WaitForAsync();
+
+        await emailInput.FillAsync("test@example.com");
+        await urlInput.FillAsync("https://example.com");
+
+        await Expect(analyzeButton).ToBeDisabledAsync();
+    }
 }

@@ -40,6 +40,7 @@ public class SmokeTest_AnalyzeButtonEnabled : IAsyncLifetime
 
         await emailInput.FillAsync("test@example.com");
         await urlInput.FillAsync("https://example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
 
         await Expect(analyzeButton).ToBeEnabledAsync();
     }

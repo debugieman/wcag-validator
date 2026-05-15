@@ -381,6 +381,38 @@ body {
   color: #999;
 }
 
+// ─── No-refund checkbox ───────────────────────────────────────────────────────
+
+.terms-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: #555;
+  line-height: 1.5;
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #0f0f1a;
+  }
+
+  strong {
+    color: #0f0f1a;
+    font-weight: 600;
+  }
+
+  a {
+    color: #4361ee;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+}
+
 // ─── Analyze Button ───────────────────────────────────────────────────────────
 
 .analyze-btn {

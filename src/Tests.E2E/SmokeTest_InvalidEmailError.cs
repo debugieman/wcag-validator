@@ -39,6 +39,7 @@ public class SmokeTest_InvalidEmailError : IAsyncLifetime
 
         await emailInput.FillAsync("notanemail");
         await urlInput.FillAsync("https://example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
 
         await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 
@@ -60,6 +61,7 @@ public class SmokeTest_InvalidEmailError : IAsyncLifetime
 
         await emailInput.FillAsync("user@");
         await urlInput.FillAsync("https://example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
 
         await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 

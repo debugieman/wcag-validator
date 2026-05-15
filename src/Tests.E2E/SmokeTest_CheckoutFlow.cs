@@ -47,6 +47,7 @@ public class SmokeTest_CheckoutFlow : IAsyncLifetime
 
         await _page.Locator("input[type='email']").FillAsync("test@example.com");
         await _page.Locator("input[type='url']").FillAsync("https://example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
         await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 
         await _page.WaitForURLAsync("**/success**");
@@ -79,6 +80,7 @@ public class SmokeTest_CheckoutFlow : IAsyncLifetime
         await _page.Locator("input[type='radio'][value='deep']").ClickAsync();
         await _page.Locator("input[type='email']").FillAsync("test@example.com");
         await _page.Locator("input[type='url']").FillAsync("https://example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
         await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 
         await _page.WaitForURLAsync("**/success**");
@@ -105,6 +107,7 @@ public class SmokeTest_CheckoutFlow : IAsyncLifetime
 
         await _page.Locator("input[type='email']").FillAsync("test@example.com");
         await _page.Locator("input[type='url']").FillAsync("https://example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
         await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 
         await _page.WaitForURLAsync("**/success**");
@@ -128,6 +131,7 @@ public class SmokeTest_CheckoutFlow : IAsyncLifetime
 
         await _page.Locator("input[type='email']").FillAsync("test@example.com");
         await _page.Locator("input[type='url']").FillAsync("https://example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
         await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 
         await Expect(_page.Locator("text=Something went wrong")).ToBeVisibleAsync();
