@@ -33,7 +33,7 @@ public class SmokeTest_AnalyzeButtonEnabled : IAsyncLifetime
 
         var emailInput = _page.Locator("input[type='email']");
         var urlInput = _page.Locator("input[type='url']");
-        var analyzeButton = _page.Locator("button", new() { HasText = "Analyze" });
+        var analyzeButton = _page.Locator("button", new() { HasText = "Get my report" });
 
         await emailInput.WaitForAsync();
         await urlInput.WaitForAsync();

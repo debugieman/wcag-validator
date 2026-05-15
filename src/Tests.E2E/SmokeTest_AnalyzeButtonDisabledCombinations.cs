@@ -32,7 +32,7 @@ public class SmokeTest_AnalyzeButtonDisabledCombinations : IAsyncLifetime
         await _page.GotoAsync("http://localhost:4200");
 
         var urlInput = _page.Locator("input[type='url']");
-        var analyzeButton = _page.Locator("button", new() { HasText = "Analyze" });
+        var analyzeButton = _page.Locator("button", new() { HasText = "Get my report" });
 
         await urlInput.WaitForAsync();
         await urlInput.FillAsync("https://example.com");
@@ -46,7 +46,7 @@ public class SmokeTest_AnalyzeButtonDisabledCombinations : IAsyncLifetime
         await _page.GotoAsync("http://localhost:4200");
 
         var emailInput = _page.Locator("input[type='email']");
-        var analyzeButton = _page.Locator("button", new() { HasText = "Analyze" });
+        var analyzeButton = _page.Locator("button", new() { HasText = "Get my report" });
 
         await emailInput.WaitForAsync();
         await emailInput.FillAsync("test@example.com");

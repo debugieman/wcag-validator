@@ -40,7 +40,7 @@ public class SmokeTest_InvalidEmailError : IAsyncLifetime
         await emailInput.FillAsync("notanemail");
         await urlInput.FillAsync("https://example.com");
 
-        await _page.Locator("button", new() { HasText = "Analyze" }).ClickAsync();
+        await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 
         var errorMessage = _page.Locator(".message.error");
         await Expect(errorMessage).ToBeVisibleAsync();
@@ -61,7 +61,7 @@ public class SmokeTest_InvalidEmailError : IAsyncLifetime
         await emailInput.FillAsync("user@");
         await urlInput.FillAsync("https://example.com");
 
-        await _page.Locator("button", new() { HasText = "Analyze" }).ClickAsync();
+        await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 
         var errorMessage = _page.Locator(".message.error");
         await Expect(errorMessage).ToBeVisibleAsync();
