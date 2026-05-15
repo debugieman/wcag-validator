@@ -200,17 +200,14 @@ body {
     margin-bottom: 0.3rem;
   }
 
-  .level-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  strong {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #0f0f1a;
+  .impact-badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
   }
 
   p {
@@ -218,13 +215,14 @@ body {
     color: #777;
     margin: 0;
     line-height: 1.6;
-    padding-left: 1.4rem;
+    padding-left: 0;
+    padding-top: 0.3rem;
   }
 
-  &.critical .level-dot { background: #ef4444; }
-  &.serious  .level-dot { background: #f97316; }
-  &.moderate .level-dot { background: #eab308; }
-  &.minor    .level-dot { background: #94a3b8; }
+  &.critical .impact-badge { background: #fef2f2; color: #dc2626; }
+  &.serious  .impact-badge { background: #fff7ed; color: #ea580c; }
+  &.moderate .impact-badge { background: #fefce8; color: #ca8a04; }
+  &.minor    .impact-badge { background: #f0fdf4; color: #16a34a; }
 }
 
 // ─── Analyzer ────────────────────────────────────────────────────────────────
