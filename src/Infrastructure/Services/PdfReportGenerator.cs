@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -115,6 +116,7 @@ public class PdfReportGenerator : IPdfReportGenerator
         QuestPDF.Settings.License = LicenseType.Community;
 
         var logoBytes = TryLoadLogo();
+        var email = analysis.Email;
 
         var document = Document.Create(container =>
         {
@@ -124,6 +126,7 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
+                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Content().Element(c => ComposeCoverPage(c, logoBytes, analysis));
             });
 
@@ -133,9 +136,10 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
+                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Header().Element(c => ComposeHeader(c, logoBytes, analysis));
                 page.Content().Element(c => ComposeContent(c, analysis));
-                page.Footer().Element(ComposeFooter);
+                page.Footer().Element(c => ComposeFooter(c, email));
             });
         });
 
@@ -663,21 +667,47 @@ public class PdfReportGenerator : IPdfReportGenerator
         });
     }
 
-    private static void ComposeFooter(IContainer container)
+    private static void ComposeFooter(IContainer container, string email)
     {
-        container.PaddingTop(8).BorderTop(1).BorderColor("#CFD8DC").Row(row =>
+        container.PaddingTop(8).BorderTop(1).BorderColor("#CFD8DC").Column(col =>
         {
-            row.RelativeItem().Text("WCAG Accessibility Report — debugieman.com")
-                .FontSize(8).FontColor("#90A4AE");
-
-            row.ConstantItem(60).AlignRight().Text(text =>
+            col.Item().Row(row =>
             {
-                text.Span("Page ").FontSize(8).FontColor("#90A4AE");
-                text.CurrentPageNumber().FontSize(8).FontColor("#90A4AE");
-                text.Span(" of ").FontSize(8).FontColor("#90A4AE");
-                text.TotalPages().FontSize(8).FontColor("#90A4AE");
+                row.RelativeItem().Text("WCAG Accessibility Report — debugieman.com")
+                    .FontSize(8).FontColor("#90A4AE");
+
+                row.ConstantItem(60).AlignRight().Text(text =>
+                {
+                    text.Span("Page ").FontSize(8).FontColor("#90A4AE");
+                    text.CurrentPageNumber().FontSize(8).FontColor("#90A4AE");
+                    text.Span(" of ").FontSize(8).FontColor("#90A4AE");
+                    text.TotalPages().FontSize(8).FontColor("#90A4AE");
+                });
             });
+
+            col.Item().PaddingTop(3).Text($"Licensed to: {email}")
+                .FontSize(7).FontColor("#B0BEC5").Italic();
         });
+    }
+
+    private static string BuildWatermarkSvg(Size size, string email)
+    {
+        var w = (int)size.Width;
+        var h = (int)size.Height;
+        var cx = w / 2;
+        var cy = h / 2;
+        var safeEmail = System.Security.SecurityElement.Escape(email) ?? email;
+        var text = $"Licensed to: {safeEmail}";
+
+        var sb = new StringBuilder();
+        sb.Append($"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">""");
+        sb.Append($"""<g transform="rotate(-40, {cx}, {cy})" opacity="0.13" font-family="Arial" font-size="20" fill="#888888" text-anchor="middle">""");
+
+        for (var y = -h; y < h * 2; y += 110)
+            sb.Append($"""<text x="{cx}" y="{y}">{text}</text>""");
+
+        sb.Append("</g></svg>");
+        return sb.ToString();
     }
 
     private static Dictionary<string, List<AnalysisResultDto>> GroupByImpact(List<AnalysisResultDto> results) =>
