@@ -165,6 +165,17 @@
         </label>
       </div>
 
+      <label class="terms-checkbox">
+        <input
+          type="checkbox"
+          [checked]="termsAccepted()"
+          (change)="termsAccepted.set($any($event.target).checked)" />
+        <span>I understand that reports are delivered digitally and
+          <strong>no refunds are issued after the report is generated.</strong>
+          I have read and agree to the <a routerLink="/terms" target="_blank">Terms of Service</a>.
+        </span>
+      </label>
+
       <button
         class="analyze-btn"
         (click)="onAnalyze()"

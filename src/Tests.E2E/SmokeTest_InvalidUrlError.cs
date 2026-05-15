@@ -39,6 +39,7 @@ public class SmokeTest_InvalidUrlError : IAsyncLifetime
 
         await emailInput.FillAsync("test@example.com");
         await urlInput.FillAsync("http://example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
 
         await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 
@@ -60,6 +61,7 @@ public class SmokeTest_InvalidUrlError : IAsyncLifetime
 
         await emailInput.FillAsync("test@example.com");
         await urlInput.FillAsync("example.com");
+        await _page.Locator(".terms-checkbox input[type='checkbox']").CheckAsync();
 
         await _page.Locator("button", new() { HasText = "Get my report" }).ClickAsync();
 

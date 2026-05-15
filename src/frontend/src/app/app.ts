@@ -116,8 +116,12 @@ export class App implements AfterViewInit {
     return this.emailPattern.test(this.email().trim());
   }
 
+  termsAccepted = signal(false);
+
   isFormReady = computed(() =>
-    this.url().trim().length > 0 && this.email().trim().length > 0
+    this.url().trim().length > 0 &&
+    this.email().trim().length > 0 &&
+    this.termsAccepted()
   );
 
   private normalizeUrl(url: string): string {
