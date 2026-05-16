@@ -82,6 +82,24 @@ public class PdfReportGenerator : IPdfReportGenerator
         ["animation-reduced-motion-missing"] = "WCAG 2.3.3",
     };
 
+    private static readonly Dictionary<string, string> WcagCriterionNames = new()
+    {
+        ["WCAG 1.1.1"]  = "Non-text Content",
+        ["WCAG 1.3.1"]  = "Info and Relationships",
+        ["WCAG 1.3.6"]  = "Identify Purpose",
+        ["WCAG 1.4.3"]  = "Contrast (Minimum)",
+        ["WCAG 1.4.10"] = "Reflow",
+        ["WCAG 2.1.1"]  = "Keyboard",
+        ["WCAG 2.1.2"]  = "No Keyboard Trap",
+        ["WCAG 2.3.3"]  = "Animation from Interactions",
+        ["WCAG 2.4.1"]  = "Bypass Blocks",
+        ["WCAG 2.4.4"]  = "Link Purpose",
+        ["WCAG 2.4.7"]  = "Focus Visible",
+        ["WCAG 2.5.5"]  = "Target Size",
+        ["WCAG 3.1.1"]  = "Language of Page",
+        ["WCAG 4.1.2"]  = "Name, Role, Value",
+    };
+
     private static readonly Dictionary<string, string> RuleDescriptions = new()
     {
         ["color-contrast"]                  = "Text is too low-contrast against its background. Affects ~8% of users with visual impairments and anyone reading in bright sunlight.",
@@ -398,6 +416,8 @@ public class PdfReportGenerator : IPdfReportGenerator
                     col.Item().PaddingTop(16);
                 }
             }
+
+            col.Item().PaddingTop(8).Element(c => ComposeCriterionView(c, allResults));
         });
     }
 
@@ -753,5 +773,100 @@ public class PdfReportGenerator : IPdfReportGenerator
         using var ms = new MemoryStream();
         stream.CopyTo(ms);
         return ms.ToArray();
+    }
+
+    internal record CriterionGroup(
+        string Criterion,
+        string CriterionName,
+        List<(GroupedRule Rule, string Impact)> Rules);
+
+    internal static List<CriterionGroup> GroupByCriterion(List<AnalysisResultDto> results)
+    {
+        return results
+            .GroupBy(r => WcagCriteria.GetValueOrDefault(r.RuleId, "Other"))
+            .OrderBy(g => g.Key)
+            .Select(g =>
+            {
+                var criterion = g.Key;
+                var name = WcagCriterionNames.GetValueOrDefault(criterion, "Other");
+                var rules = g
+                    .GroupBy(r => r.RuleId)
+                    .Select(rg =>
+                    {
+                        var rule = new GroupedRule(
+                            RuleId:      rg.Key,
+                            Count:       rg.Count(),
+                            Description: rg.First().Description,
+                            HelpUrl:     rg.First().HelpUrl,
+                            Examples:    []);
+                        var impact = ImpactOrder.Keys
+                            .FirstOrDefault(i => rg.Any(r => r.Impact == i)) ?? "minor";
+                        return (Rule: rule, Impact: impact);
+                    })
+                    .OrderBy(x => ImpactOrder.Keys.ToList().IndexOf(x.Impact))
+                    .ToList();
+                return new CriterionGroup(criterion, name, rules);
+            })
+            .ToList();
+    }
+
+    private static void ComposeCriterionView(IContainer container, List<AnalysisResultDto> results)
+    {
+        if (results.Count == 0) return;
+
+        var groups = GroupByCriterion(results);
+        if (groups.Count == 0) return;
+
+        container.Column(col =>
+        {
+            col.Item().BorderTop(2).BorderColor("#1A237E").PaddingTop(12)
+                .Text("Issues by WCAG Criterion")
+                .FontSize(13).Bold().FontColor("#1A237E");
+
+            col.Item().PaddingTop(4).PaddingBottom(8)
+                .Text("The same issues viewed by accessibility standard — useful for targeted WCAG compliance work.")
+                .FontSize(8.5f).FontColor("#78909C");
+
+            foreach (var group in groups)
+            {
+                col.Item().PaddingTop(10).Column(inner =>
+                {
+                    inner.Item().Background("#E8EAF6").Padding(7).Row(row =>
+                    {
+                        row.RelativeItem()
+                            .Text($"{group.Criterion}  —  {group.CriterionName}")
+                            .FontSize(10).Bold().FontColor("#1A237E");
+                        row.ConstantItem(60).AlignRight()
+                            .Text($"{group.Rules.Sum(r => r.Rule.Count)} issues")
+                            .FontSize(8).FontColor("#5C6BC0");
+                    });
+
+                    foreach (var (rule, impact) in group.Rules)
+                    {
+                        var impactColor = ImpactColors.GetValueOrDefault(impact, "#546E7A");
+                        var friendly = FriendlyNames.GetValueOrDefault(rule.RuleId) ?? rule.RuleId;
+
+                        inner.Item().BorderBottom(1).BorderColor("#ECEFF1")
+                            .PaddingVertical(5).PaddingHorizontal(8).Row(row =>
+                        {
+                            row.RelativeItem().Column(c =>
+                            {
+                                c.Item().Text(friendly).FontSize(9).Bold().FontColor("#263238");
+                                c.Item().Text(rule.RuleId).FontSize(7.5f).FontColor("#90A4AE");
+                            });
+                            row.ConstantItem(70).AlignRight().AlignMiddle().Column(c =>
+                            {
+                                c.Item().AlignRight().Background(impactColor).Padding(2)
+                                    .Text(ImpactOrder.GetValueOrDefault(impact, impact))
+                                    .FontSize(7).Bold().FontColor(Colors.White);
+                                c.Item().AlignRight().PaddingTop(2)
+                                    .Text($"×{rule.Count}")
+                                    .FontSize(7).FontColor("#90A4AE");
+                            });
+                        });
+                    }
+                });
+            }
+        });
     }
 }
