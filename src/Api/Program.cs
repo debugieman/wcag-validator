@@ -199,6 +199,18 @@ app.MapGet("/api/analysis/{id:guid}", async (Guid id, IMediator mediator, Cancel
     return Results.Ok(result);
 });
 
+app.MapGet("/api/analysis/summary", async (string email, IMediator mediator, CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.BadRequest();
+
+    var result = await mediator.Send(new GetAnalysisSummaryByEmailQuery(email), cancellationToken);
+    if (result is null)
+        return Results.NotFound();
+
+    return Results.Ok(result);
+});
+
 app.MapGet("/api/analysis", async (IMediator mediator, CancellationToken cancellationToken) =>
 {
     return await mediator.Send(new GetAllAnalysesQuery(), cancellationToken);

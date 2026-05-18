@@ -57,4 +57,13 @@ public class AnalysisRepository : IAnalysisRepository
         return await _context.AnalysisRequests
             .AnyAsync(r => r.Url.Contains(domain) && r.CreatedAt >= since, cancellationToken);
     }
+
+    public async Task<AnalysisRequest?> GetLatestByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        return await _context.AnalysisRequests
+            .Include(r => r.Results)
+            .Where(r => r.Email == email)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }
