@@ -137,6 +137,17 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
                 page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
+                page.Content().Element(ComposeAboutPage);
+                page.Footer().Element(c => ComposeFooter(c, email));
+            });
+
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(40);
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
+
+                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Header().Element(c => ComposeHeader(c, logoBytes, analysis));
                 page.Content().Element(c => ComposeContent(c, analysis));
                 page.Footer().Element(c => ComposeFooter(c, email));
@@ -663,6 +674,80 @@ public class PdfReportGenerator : IPdfReportGenerator
                     });
                 });
             }
+        });
+    }
+
+    private static void ComposeAboutPage(IContainer container)
+    {
+        container.PaddingTop(20).Column(col =>
+        {
+            col.Item().Text("WCAG Analyzer — Beyond the Built-in")
+                .FontSize(22).Bold().FontColor("#1A237E");
+
+            col.Item().PaddingTop(4).LineHorizontal(2).LineColor("#1A237E");
+
+            col.Item().PaddingTop(24).Background("#F8F9FF").Padding(16).Column(inner =>
+            {
+                inner.Item().Text("Most accessibility tools stop at what a browser plugin can see.")
+                    .FontSize(12).Bold().FontColor("#263238");
+                inner.Item().PaddingTop(8).Text(
+                    "Tools like axe-core and Lighthouse provide a solid baseline — but they were built as " +
+                    "general-purpose checkers, not dedicated accessibility auditors. They miss heading " +
+                    "hierarchy errors, skip-navigation gaps, SVG labelling issues, and a growing range " +
+                    "of interaction-level checks that only surface when a real browser engine navigates " +
+                    "your page the way assistive technology does.")
+                    .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
+            });
+
+            col.Item().PaddingTop(20).Row(row =>
+            {
+                row.ConstantItem(4).Background("#1A237E");
+                row.ConstantItem(16);
+                row.RelativeItem().Column(inner =>
+                {
+                    inner.Item().Text("Built on Playwright. Built for real users.")
+                        .FontSize(12).Bold().FontColor("#1A237E");
+                    inner.Item().PaddingTop(6).Text(
+                        "WCAG Analyzer is powered by Playwright — a full browser automation engine. " +
+                        "We test your site the way a real user experiences it: fully rendered, " +
+                        "interactive, and measured against the criteria that matter under the " +
+                        "EU Accessibility Act (EAA), effective June 2025.")
+                        .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
+                });
+            });
+
+            col.Item().PaddingTop(20).Row(row =>
+            {
+                row.ConstantItem(4).Background("#388E3C");
+                row.ConstantItem(16);
+                row.RelativeItem().Column(inner =>
+                {
+                    inner.Item().Text("Actively developed. Continuously improving.")
+                        .FontSize(12).Bold().FontColor("#388E3C");
+                    inner.Item().PaddingTop(6).Text(
+                        "This report comes from a product that gets better every month. We add new checks " +
+                        "regularly, improve scoring accuracy, and refine our analysis based on real-world " +
+                        "feedback. What you're holding is not a snapshot of a finished tool — it's the " +
+                        "output of a living product, built with accessibility professionals in mind.")
+                        .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
+                });
+            });
+
+            col.Item().PaddingTop(32).Background("#E8EAF6").Padding(20).Column(inner =>
+            {
+                inner.Item().AlignCenter().Text("We'd love your feedback")
+                    .FontSize(14).Bold().FontColor("#1A237E");
+                inner.Item().PaddingTop(8).AlignCenter().Text(
+                    "Found a false positive? Missed an issue? Have a suggestion? " +
+                    "Every message is read and taken seriously.")
+                    .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
+                inner.Item().PaddingTop(12).AlignCenter().Text("debugieman@gmail.com")
+                    .FontSize(12).Bold().FontColor("#1565C0").Underline();
+            });
+
+            col.Item().Extend().AlignBottom().PaddingBottom(8).AlignCenter()
+                .Text("Thank you for choosing WCAG Analyzer.")
+                .FontSize(9).Italic().FontColor("#90A4AE");
         });
     }
 
