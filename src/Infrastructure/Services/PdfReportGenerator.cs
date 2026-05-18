@@ -268,9 +268,8 @@ public class PdfReportGenerator : IPdfReportGenerator
                 });
             }
 
-            col.Item().Extend();
-
-            col.Item().AlignCenter().Text("debugieman.com")
+            col.Item().Extend().AlignBottom().PaddingBottom(8)
+                .AlignCenter().Text("debugieman.com")
                 .FontSize(9).FontColor("#CFD8DC");
         });
     }
