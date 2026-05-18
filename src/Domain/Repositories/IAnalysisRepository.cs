@@ -11,4 +11,5 @@ public interface IAnalysisRepository
     Task AddAsync(AnalysisRequest request, CancellationToken cancellationToken = default);
     Task UpdateAsync(AnalysisRequest request, CancellationToken cancellationToken = default);
     Task<bool> ExistsByDomainSinceAsync(string domain, DateTime since, CancellationToken cancellationToken = default);
+    Task<AnalysisRequest?> GetLatestByEmailAsync(string email, CancellationToken cancellationToken = default);
 }
