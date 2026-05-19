@@ -279,10 +279,66 @@ public class PdfReportGenerator : IPdfReportGenerator
                 });
             }
 
+            col.Item().Height(20);
+
+            col.Item().AlignCenter().Width(460).Background("#F8F9FF").Padding(14).Column(summaryCol =>
+            {
+                var summary = BuildCoverSummary(score, allResults);
+                summaryCol.Item().Text(summary).FontSize(9.5f).FontColor("#37474F").LineHeight(1.55f);
+            });
+
             col.Item().Extend().AlignBottom().PaddingBottom(8)
                 .AlignCenter().Text("debugieman.com")
                 .FontSize(9).FontColor("#CFD8DC");
         });
+    }
+
+    internal static string BuildCoverSummary(int score, List<AnalysisResultDto> results)
+    {
+        var uniqueRules = results.GroupBy(r => r.RuleId).ToList();
+        var topRules = uniqueRules
+            .OrderBy(g => new[] { "critical", "serious", "moderate", "minor" }.ToList().IndexOf(g.First().Impact))
+            .ThenByDescending(g => g.Count())
+            .Take(2)
+            .Select(g => FriendlyNames.GetValueOrDefault(g.Key, g.Key))
+            .ToList();
+
+        int critical = results.Count(r => r.Impact == "critical");
+        int serious  = results.Count(r => r.Impact == "serious");
+
+        var topList = topRules.Count > 0
+            ? string.Join(" and ", topRules.Select(r => $"\"{r}\""))
+            : null;
+
+        if (results.Count == 0)
+            return "No accessibility violations were detected on this website — excellent work. " +
+                   "Regular re-testing is recommended as content changes over time.";
+
+        if (score >= 80)
+            return $"This website scores well on accessibility ({score}/100). " +
+                   (topList is not null
+                       ? $"A small number of issues remain, most notably {topList}. "
+                       : string.Empty) +
+                   "Addressing these will further strengthen compliance with the " +
+                   "EU Accessibility Act (EAA), which takes effect in June 2025.";
+
+        if (score >= 50)
+        {
+            var criticalNote = critical > 0
+                ? $"{critical} critical violation{(critical > 1 ? "s" : "")} require immediate attention. "
+                : string.Empty;
+            return $"This website scores {score}/100 and has accessibility gaps that may affect users with disabilities. " +
+                   criticalNote +
+                   (topList is not null ? $"The most impactful issues found are {topList}. " : string.Empty) +
+                   "Resolving these is recommended before the EU Accessibility Act (EAA) compliance deadline of June 2025.";
+        }
+
+        var severeCount = critical + serious;
+        return $"This website scores {score}/100 and presents significant accessibility barriers. " +
+               $"{severeCount} critical or serious violation{(severeCount > 1 ? "s" : "")} were identified" +
+               (topList is not null ? $", including {topList}" : string.Empty) +
+               ". Users with disabilities may be unable to access core content. " +
+               "Immediate remediation is required to meet EU Accessibility Act (EAA) requirements.";
     }
 
     private static void CoverStatBadge(IContainer container, string count, string label, string color, string bg)
