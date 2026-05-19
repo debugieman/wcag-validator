@@ -24,7 +24,7 @@ public class PdfScoreTests
 
         var score = PdfReportGenerator.CalculateScore(results);
 
-        // log2(2)/log2(112) * 40 ≈ 6 points deducted → score ~94
+        // passRate=110/111≈99.1%, penalty=15/log2(112)≈2.2 → score ~97
         score.Should().BeInRange(90, 98);
     }
 
@@ -154,11 +154,12 @@ public class PdfScoreTests
     }
 
     [Fact]
-    public void UnknownImpact_ShouldNotAffectScore()
+    public void UnknownImpact_ShouldNotReceiveImpactPenalty()
     {
         var withUnknown = PdfReportGenerator.CalculateScore(
             new List<AnalysisResultDto> { Result("some-rule", "unknown") });
 
-        withUnknown.Should().Be(100);
+        // passRate slightly below 100% but no impact penalty applied → score 99
+        withUnknown.Should().BeGreaterThanOrEqualTo(99);
     }
 }

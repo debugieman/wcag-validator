@@ -345,8 +345,11 @@ public class PdfReportGenerator : IPdfReportGenerator
     {
         const int totalRules = 111;
 
-        var uniqueByImpact = results
-            .GroupBy(r => r.RuleId)
+        var uniqueRules = results.GroupBy(r => r.RuleId).ToList();
+        int uniqueViolating = uniqueRules.Count;
+        double passRate = (double)Math.Max(0, totalRules - uniqueViolating) / totalRules;
+
+        var uniqueByImpact = uniqueRules
             .GroupBy(g => g.First().Impact)
             .ToDictionary(g => g.Key, g => g.Count());
 
@@ -356,14 +359,13 @@ public class PdfReportGenerator : IPdfReportGenerator
         int minor    = uniqueByImpact.GetValueOrDefault("minor",    0);
 
         double logBase = Math.Log2(totalRules + 1);
-
         double penalty =
-            40 * Math.Log2(1 + critical)  / logBase +
-            25 * Math.Log2(1 + serious)   / logBase +
-            12 * Math.Log2(1 + moderate)  / logBase +
-             4 * Math.Log2(1 + minor)     / logBase;
+            15 * Math.Log2(1 + critical)  / logBase +
+             8 * Math.Log2(1 + serious)   / logBase +
+             4 * Math.Log2(1 + moderate)  / logBase +
+             1 * Math.Log2(1 + minor)     / logBase;
 
-        return (int)Math.Round(Math.Max(0, 100 - penalty));
+        return (int)Math.Round(Math.Max(0, passRate * 100 - penalty));
     }
 
     private static void ComposeContent(IContainer container, GetAnalysisByIdResult analysis)
