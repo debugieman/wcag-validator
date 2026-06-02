@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -115,7 +114,6 @@ public class PdfReportGenerator : IPdfReportGenerator
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
-        var logoBytes = TryLoadLogo();
         var email = analysis.Email;
 
         var document = Document.Create(container =>
@@ -127,7 +125,7 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
                 page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
-                page.Content().Element(c => ComposeCoverPage(c, logoBytes, analysis));
+                page.Content().Element(c => ComposeCoverPage(c, analysis));
             });
 
             container.Page(page =>
@@ -148,7 +146,7 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
                 page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
-                page.Header().Element(c => ComposeHeader(c, logoBytes, analysis));
+                page.Header().Element(c => ComposeHeader(c, analysis));
                 page.Content().Element(c => ComposeContent(c, analysis));
                 page.Footer().Element(c => ComposeFooter(c, email));
             });
@@ -160,7 +158,7 @@ public class PdfReportGenerator : IPdfReportGenerator
     public int CalculateScore(GetAnalysisByIdResult analysis) =>
         CalculateScore(analysis.Results.ToList());
 
-    private static void ComposeCoverPage(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
+    private static void ComposeCoverPage(IContainer container, GetAnalysisByIdResult analysis)
     {
         var allResults = analysis.Results.ToList();
         var score = CalculateScore(allResults);
@@ -178,12 +176,7 @@ public class PdfReportGenerator : IPdfReportGenerator
 
         container.Column(col =>
         {
-            col.Item().Height(60);
-
-            if (logoBytes is not null)
-                col.Item().AlignCenter().Width(120).Image(logoBytes);
-
-            col.Item().Height(30);
+            col.Item().Height(80);
 
             col.Item().AlignCenter().Text("WCAG Accessibility Report")
                 .FontSize(28).Bold().FontColor("#1A237E");
@@ -350,7 +343,7 @@ public class PdfReportGenerator : IPdfReportGenerator
         });
     }
 
-    private static void ComposeHeader(IContainer container, byte[]? logoBytes, GetAnalysisByIdResult analysis)
+    private static void ComposeHeader(IContainer container, GetAnalysisByIdResult analysis)
     {
         var score = CalculateScore(analysis.Results.ToList());
         var scoreColor = ScoreColor(score);
@@ -359,10 +352,7 @@ public class PdfReportGenerator : IPdfReportGenerator
         {
             col.Item().Row(row =>
             {
-                if (logoBytes is not null)
-                    row.ConstantItem(80).Image(logoBytes);
-
-                row.RelativeItem().PaddingLeft(logoBytes is not null ? 16 : 0).Column(inner =>
+                row.RelativeItem().Column(inner =>
                 {
                     inner.Item().Text("WCAG Accessibility Report")
                         .FontSize(20).Bold().FontColor("#1A237E");
@@ -882,18 +872,4 @@ public class PdfReportGenerator : IPdfReportGenerator
         return html.Length > maxLength ? html[..maxLength] + "..." : html;
     }
 
-    private static byte[]? TryLoadLogo()
-    {
-        var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = assembly.GetManifestResourceNames()
-            .FirstOrDefault(n => n.EndsWith("DEBUGIEMAN_LOGO.png"));
-
-        if (resourceName is null)
-            return null;
-
-        using var stream = assembly.GetManifestResourceStream(resourceName)!;
-        using var ms = new MemoryStream();
-        stream.CopyTo(ms);
-        return ms.ToArray();
-    }
 }
