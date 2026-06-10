@@ -222,7 +222,8 @@ app.MapGet("/api/analysis/{id:guid}/report", async (Guid id, IMediator mediator,
     if (result is null)
         return Results.NotFound(new { Message = "Analysis not found" });
 
-    if (result.Status != "Completed")
+    var hasResults = result.Results.Any();
+    if (result.Status != "Completed" && !(result.Status == "Failed" && hasResults))
         return Results.Problem(detail: "Analysis is not completed yet.", statusCode: 409);
 
     var pdfBytes = pdfGenerator.Generate(result);
