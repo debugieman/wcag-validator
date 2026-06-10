@@ -24,12 +24,33 @@ body {
   color: #1a1a2e;
 }
 
+// ─── Site Header ──────────────────────────────────────────────────────────────
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #fff;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.site-header-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0.75rem 2rem;
+}
+
+.site-logo {
+  height: 46px;
+  display: block;
+}
+
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
 .hero {
   background: #fff;
   border-bottom: 1px solid #ebebeb;
-  padding: 6rem 2rem 5rem;
+  padding: 4rem 2rem 5rem;
 }
 
 .hero-container {
