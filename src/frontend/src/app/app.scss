@@ -717,47 +717,131 @@ body {
     font-weight: 700;
     color: #0f0f1a;
     letter-spacing: -0.02em;
-    margin: 1.25rem 0 1rem;
+    margin: 1.25rem 0 0.75rem;
   }
 }
+
+// ─── Animated checkmark ───────────────────────────────────────────────────────
 
 .success-icon-wrap {
   display: flex;
   justify-content: center;
-  animation: icon-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  margin-bottom: 0.25rem;
 }
 
-.success-icon {
-  display: inline-flex;
-  align-items: center;
+.success-checkmark {
+  width: 72px;
+  height: 72px;
+
+  .checkmark-circle {
+    stroke: #16a34a;
+    stroke-width: 2.5;
+    stroke-dasharray: 151;
+    stroke-dashoffset: 151;
+    animation: draw-circle 0.55s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  }
+
+  .checkmark-tick {
+    fill: none;
+    stroke: #16a34a;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 38;
+    stroke-dashoffset: 38;
+    animation: draw-tick 0.35s 0.5s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  }
+}
+
+@keyframes draw-circle {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes draw-tick {
+  to { stroke-dashoffset: 0; }
+}
+
+// ─── Steps progress ───────────────────────────────────────────────────────────
+
+.success-steps {
+  display: flex;
+  align-items: flex-start;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: #16a34a;
-  color: #fff;
-  font-size: 1.6rem;
-  font-weight: 700;
-  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4);
-  animation: icon-ring 1.8s ease-out 0.5s forwards;
+  margin: 1.75rem auto 0.5rem;
+  max-width: 360px;
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 80px;
+
+    .step-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #d1d5db;
+      background: #fff;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      position: relative;
+    }
+
+    .step-label {
+      font-size: 0.68rem;
+      color: #9ca3af;
+      font-weight: 500;
+      transition: color 0.3s ease;
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    &.done {
+      .step-dot {
+        background: #16a34a;
+        border-color: #16a34a;
+
+        &::after {
+          content: '';
+          position: absolute;
+          inset: 2px;
+          background: url("data:image/svg+xml,%3Csvg viewBox='0 0 8 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='1,4.5 3.5,7 7,1.5' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+        }
+      }
+      .step-label { color: #16a34a; font-weight: 600; }
+    }
+
+    &.active {
+      .step-dot {
+        border-color: #4361ee;
+        animation: pulse-dot 1.4s ease-in-out infinite;
+      }
+      .step-label { color: #4361ee; font-weight: 600; }
+    }
+  }
+
+  .step-line {
+    flex: 1;
+    height: 2px;
+    background: #e5e7eb;
+    margin-top: 6px;
+    border-radius: 1px;
+    transition: background 0.4s ease;
+
+    &.done { background: #16a34a; }
+  }
 }
 
-@keyframes icon-pop {
-  from { opacity: 0; transform: scale(0.5); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-@keyframes icon-ring {
-  0%   { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
-  70%  { box-shadow: 0 0 0 18px rgba(22, 163, 74, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(67, 97, 238, 0); }
 }
 
 .success-lead {
   font-size: 1rem;
   color: #444;
   line-height: 1.7;
-  margin: 0 0 1rem;
+  margin: 1.25rem 0 0.5rem;
 
   strong {
     color: #0f0f1a;
@@ -800,8 +884,17 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 1.75rem 1.5rem 1.25rem;
-  margin: 1.5rem 0;
+  margin: 1.25rem 0;
   text-align: center;
+
+  &--reveal {
+    animation: card-reveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+}
+
+@keyframes card-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .score-number {
@@ -832,7 +925,7 @@ body {
 .score-bar-fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 1s ease;
+  transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
 
   &.good    { background: #16a34a; }
   &.average { background: #d97706; }

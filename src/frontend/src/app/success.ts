@@ -21,17 +21,43 @@ interface AnalysisSummary {
       </div>
 
       <div class="success-container">
+
+        <!-- Animated checkmark -->
         <div class="success-icon-wrap">
-          <div class="success-icon">✓</div>
+          <svg class="success-checkmark" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+            <circle class="checkmark-circle" cx="26" cy="26" r="24" fill="none"/>
+            <polyline class="checkmark-tick" points="14,27 22,35 38,19"/>
+          </svg>
         </div>
 
-        <h1>Payment confirmed</h1>
+        <h1>Payment successful</h1>
         <p class="success-lead">
-          Your report is being prepared and will be sent to <strong>{{ email() }}</strong>.
+          Your report for <strong>{{ email() }}</strong> is on its way.
         </p>
 
+        <!-- 3-step progress -->
+        <div class="success-steps">
+          <div class="step done">
+            <div class="step-dot"></div>
+            <div class="step-label">Payment confirmed</div>
+          </div>
+          <div class="step-line" [class.done]="summary() !== null"></div>
+          <div class="step"
+               [class.done]="summary()?.status === 'Completed'"
+               [class.active]="summary() !== null && summary()!.status !== 'Completed'">
+            <div class="step-dot"></div>
+            <div class="step-label">Scanning website</div>
+          </div>
+          <div class="step-line" [class.done]="summary()?.status === 'Completed'"></div>
+          <div class="step" [class.done]="summary()?.status === 'Completed'">
+            <div class="step-dot"></div>
+            <div class="step-label">Report sent</div>
+          </div>
+        </div>
+
+        <!-- Score card (revealed when done) -->
         @if (summary() && summary()!.status === 'Completed') {
-          <div class="score-card">
+          <div class="score-card score-card--reveal">
             <div class="score-number" [class]="scoreClass()">{{ summary()!.score }}</div>
             <div class="score-label-text">out of 100</div>
             <div class="score-bar-wrap">
