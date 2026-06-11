@@ -16,12 +16,18 @@ interface AnalysisSummary {
   imports: [RouterLink],
   template: `
     <div class="success-page">
+      <div class="success-header">
+        <img src="/logo.svg" alt="WCAG Analyzer" class="success-logo" />
+      </div>
+
       <div class="success-container">
-        <div class="success-icon">✓</div>
-        <h1>Payment successful</h1>
+        <div class="success-icon-wrap">
+          <div class="success-icon">✓</div>
+        </div>
+
+        <h1>Payment confirmed</h1>
         <p class="success-lead">
-          We're scanning your website now. Your accessibility report will be
-          sent to <strong>{{ email() }}</strong> within a few minutes.
+          Your report is being prepared and will be sent to <strong>{{ email() }}</strong>.
         </p>
 
         @if (summary() && summary()!.status === 'Completed') {
@@ -32,7 +38,6 @@ interface AnalysisSummary {
               <div class="score-bar-fill" [class]="scoreClass()" [style.width.%]="summary()!.score"></div>
             </div>
             <div class="score-tag" [class]="scoreClass()">{{ scoreLabel() }}</div>
-
             <div class="impact-breakdown">
               @if (summary()!.critical > 0) {
                 <span class="impact-chip critical">{{ summary()!.critical }} Critical</span>
@@ -47,15 +52,32 @@ interface AnalysisSummary {
                 <span class="impact-chip minor">{{ summary()!.minor }} Minor</span>
               }
               @if (noViolations()) {
-                <span class="impact-chip good">No violations found 🎉</span>
+                <span class="impact-chip good">No violations found</span>
               }
             </div>
             <p class="score-report-note">Full report with all details sent to your email.</p>
           </div>
         } @else {
           <div class="analyzing-state">
-            <div class="analyzing-spinner"></div>
-            <p class="analyzing-text">Analyzing your website…</p>
+            <div class="analyzing-steps">
+              <div class="analyzing-step step-1">
+                <div class="step-dot"></div>
+                <span>Launching browser</span>
+              </div>
+              <div class="analyzing-step step-2">
+                <div class="step-dot"></div>
+                <span>Running 100+ accessibility checks</span>
+              </div>
+              <div class="analyzing-step step-3">
+                <div class="step-dot"></div>
+                <span>Generating your PDF report</span>
+              </div>
+              <div class="analyzing-step step-4">
+                <div class="step-dot"></div>
+                <span>Sending to your inbox</span>
+              </div>
+            </div>
+            <p class="analyzing-eta">Usually ready in 1–3 minutes.</p>
           </div>
         }
 
