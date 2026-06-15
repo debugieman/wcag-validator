@@ -140,16 +140,17 @@ app.MapPost("/api/webhook", async (HttpRequest request, IMediator mediator, ICon
 {
     var body = await new StreamReader(request.Body).ReadToEndAsync();
     var webhookSecret = config["Stripe:WebhookSecret"] ?? "";
+    var signature = request.Headers["Stripe-Signature"].ToString();
+
+    if (string.IsNullOrEmpty(signature))
+        return Results.BadRequest();
 
     Event stripeEvent;
     try
     {
-        stripeEvent = EventUtility.ConstructEvent(
-            body,
-            request.Headers["Stripe-Signature"],
-            webhookSecret);
+        stripeEvent = EventUtility.ConstructEvent(body, signature, webhookSecret);
     }
-    catch (StripeException)
+    catch (Exception ex) when (ex is StripeException || ex is ArgumentException)
     {
         return Results.BadRequest();
     }

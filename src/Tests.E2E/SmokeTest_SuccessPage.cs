@@ -69,4 +69,50 @@ public class SmokeTest_SuccessPage : IAsyncLifetime
 
         await Expect(_page.Locator(".success-container h1")).ToContainTextAsync("Payment successful");
     }
+
+    [Fact]
+    public async Task SuccessPage_ShouldShowLogo()
+    {
+        await _page.GotoAsync("http://localhost:4200/success?email=test%40example.com");
+
+        var logo = _page.Locator(".success-logo");
+        await Expect(logo).ToBeVisibleAsync();
+        await Expect(logo).ToHaveAttributeAsync("alt", "WCAG Analyzer");
+    }
+
+    [Fact]
+    public async Task SuccessPage_ShouldShowAnimatedCheckmark()
+    {
+        await _page.GotoAsync("http://localhost:4200/success?email=test%40example.com");
+
+        await Expect(_page.Locator(".success-checkmark")).ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task SuccessPage_ShouldShowThreeStepProgressBar()
+    {
+        await _page.GotoAsync("http://localhost:4200/success?email=test%40example.com");
+
+        var steps = _page.Locator(".success-steps .step");
+        await Expect(steps).ToHaveCountAsync(3);
+    }
+
+    [Fact]
+    public async Task SuccessPage_FirstStepShouldBeDone()
+    {
+        await _page.GotoAsync("http://localhost:4200/success?email=test%40example.com");
+
+        var firstStep = _page.Locator(".success-steps .step.done").First;
+        await Expect(firstStep).ToBeVisibleAsync();
+        await Expect(firstStep.Locator(".step-label")).ToContainTextAsync("Payment confirmed");
+    }
+
+    [Fact]
+    public async Task SuccessPage_ShouldShowAnalyzingStepsWhilePending()
+    {
+        await _page.GotoAsync("http://localhost:4200/success?email=nobody%40test.com");
+
+        await Expect(_page.Locator(".analyzing-steps")).ToBeVisibleAsync();
+        await Expect(_page.Locator(".analyzing-step").First).ToBeVisibleAsync();
+    }
 }

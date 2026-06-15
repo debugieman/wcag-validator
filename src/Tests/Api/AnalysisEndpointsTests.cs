@@ -246,4 +246,45 @@ public class AnalysisEndpointsTests : IDisposable
 
         content.GetProperty("deepScan").GetBoolean().Should().BeTrue();
     }
+
+    [Fact]
+    public async Task GetSummary_WithoutEmail_ShouldReturn400()
+    {
+        var response = await _client.GetAsync("/api/analysis/summary");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task GetSummary_WithWhitespaceEmail_ShouldReturn400()
+    {
+        var response = await _client.GetAsync("/api/analysis/summary?email=   ");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task GetSummary_EmailNotInDatabase_ShouldReturn404()
+    {
+        var response = await _client.GetAsync("/api/analysis/summary?email=nobody%40nowhere.com");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetSummary_ExistingEmail_ShouldReturn200WithStatus()
+    {
+        var email = "summary-test@example.com";
+        await _client.PostAsJsonAsync("/api/analysis",
+            new { url = "https://summary-endpoint-test.com", email });
+
+        var response = await _client.GetAsync($"/api/analysis/summary?email={Uri.EscapeDataString(email)}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("status").GetString().Should().Be("Pending");
+        content.GetProperty("score").GetInt32().Should().Be(0);
+        content.TryGetProperty("id", out _).Should().BeTrue();
+    }
 }
