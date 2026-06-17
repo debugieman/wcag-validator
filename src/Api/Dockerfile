@@ -47,6 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libwayland-client0 \
     fonts-liberation \
     fonts-noto-color-emoji \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Playwright browsers from build stage
