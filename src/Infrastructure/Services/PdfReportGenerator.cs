@@ -111,6 +111,34 @@ public class PdfReportGenerator : IPdfReportGenerator
         ["table-missing-caption"]           = "Data tables have no caption. Users with screen readers cannot identify the table's purpose.",
     };
 
+    private static readonly Dictionary<string, string> FixGuidance = new()
+    {
+        ["color-contrast"]                   = "Increase contrast ratio to at least 4.5:1 for normal text (3:1 for large text ≥18pt). Use the WebAIM Contrast Checker to verify combinations before publishing.",
+        ["image-alt"]                        = "Add a descriptive alt attribute to every <img>. For purely decorative images use alt=\"\" so screen readers skip them.",
+        ["svg-image-missing-alt"]            = "Add role=\"img\" and aria-label=\"description\" to informative SVGs. Decorative SVGs should have aria-hidden=\"true\".",
+        ["button-name"]                      = "Add visible text inside every <button>, or use aria-label for icon-only buttons (e.g. aria-label=\"Close menu\").",
+        ["link-name"]                        = "Replace vague link text ('click here', 'read more') with descriptive text that makes sense out of context, or add aria-label.",
+        ["input-missing-label"]              = "Wrap each <input> in a <label>, or use aria-labelledby / aria-label to associate a label programmatically.",
+        ["select-textarea-missing-label"]    = "Add a visible <label> or aria-label to every <select> and <textarea> element.",
+        ["label"]                            = "Ensure every form control has an associated <label> via a matching 'for'/'id' pair.",
+        ["html-has-lang"]                    = "Add a lang attribute to the <html> element (e.g. <html lang=\"en\">). This allows screen readers to select the correct voice.",
+        ["heading-level-skipped"]            = "Fix heading hierarchy so levels are never skipped (H1 → H2 → H3). Use CSS for visual styling rather than jumping levels.",
+        ["heading-first-not-h1"]             = "Make the first heading on the page an H1. There should be exactly one H1 per page describing the main topic.",
+        ["skip-navigation-missing"]          = "Add a 'Skip to main content' link as the very first element in <body>. It may be visually hidden but must appear on keyboard focus.",
+        ["landmark-one-main"]                = "Wrap main page content in a <main> element. Each page must have exactly one <main> landmark.",
+        ["landmark-unique"]                  = "Add aria-label to duplicate landmarks (e.g. aria-label=\"Main navigation\") to distinguish them from one another.",
+        ["region"]                           = "Wrap all page content in landmark elements: <header>, <main>, <nav>, <aside>, <footer>.",
+        ["list"]                             = "Use <ul>/<ol> only for actual lists. Ensure <li> elements are direct children of <ul> or <ol>.",
+        ["table-missing-caption"]            = "Add a <caption> as the first child of each <table> to describe its purpose for screen reader users.",
+        ["aria-allowed-role"]                = "Remove or correct ARIA roles applied to elements that do not support them. Consult the ARIA specification for valid roles per element type.",
+        ["focus-visible-missing"]            = "Remove outline:none from CSS, or replace it with a clearly visible custom focus style using outline or box-shadow.",
+        ["interactive-not-focusable"]        = "Use natively focusable elements (<button>, <a>, <input>) or add tabindex=\"0\" with keyboard event handlers to custom interactive elements.",
+        ["keyboard-trap"]                    = "Ensure users can exit every modal or widget using Escape or Tab. Test the entire page with keyboard-only navigation.",
+        ["reflow-horizontal-scroll"]         = "Use responsive CSS (flexbox, grid, relative units) so content reflows into a single column at 320px viewport width.",
+        ["touch-target-too-small"]           = "Set a minimum tap target of 44×44 px using padding or min-width/min-height on all buttons and links.",
+        ["animation-reduced-motion-missing"] = "Wrap animations in @media (prefers-reduced-motion: no-preference) so they pause for users who have enabled reduced motion in their OS.",
+    };
+
     private static readonly Lazy<string?> LogoSvg = new(LoadLogoSvg);
 
     public byte[] Generate(GetAnalysisByIdResult analysis)
@@ -152,6 +180,17 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Header().Element(c => ComposeHeader(c, logoSvg, analysis));
                 page.Content().Element(c => ComposeContent(c, analysis));
+                page.Footer().Element(c => ComposeFooter(c, email));
+            });
+
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(40);
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
+
+                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
+                page.Content().Element(c => ComposeWhatNextPage(c, analysis));
                 page.Footer().Element(c => ComposeFooter(c, email));
             });
         });
@@ -733,6 +772,141 @@ public class PdfReportGenerator : IPdfReportGenerator
                             .FontSize(9).FontColor("#546E7A");
                     });
                 });
+            }
+        });
+    }
+
+    private static void ComposeWhatNextPage(IContainer container, GetAnalysisByIdResult analysis)
+    {
+        var allResults = analysis.Results.ToList();
+
+        var byImpact = new[] { "critical", "serious", "moderate", "minor" }
+            .ToDictionary(
+                impact => impact,
+                impact => allResults
+                    .Where(r => r.Impact == impact)
+                    .GroupBy(r => r.RuleId)
+                    .OrderByDescending(g => g.Count())
+                    .ToList()
+            );
+
+        container.PaddingTop(20).Column(col =>
+        {
+            col.Item().Text("What's Next?").FontSize(22).Bold().FontColor("#1A237E");
+            col.Item().PaddingTop(4).LineHorizontal(2).LineColor("#1A237E");
+
+            col.Item().PaddingTop(10).Text(
+                "Use this prioritised action plan to address accessibility issues efficiently. " +
+                "Start with the highest-impact problems and re-run your scan after each round of fixes.")
+                .FontSize(10).FontColor("#546E7A").LineHeight(1.45f);
+
+            if (allResults.Count == 0)
+            {
+                col.Item().PaddingTop(24).Background("#E8F5E9").Padding(20).Column(inner =>
+                {
+                    inner.Item().AlignCenter().Text("No violations found — great work!")
+                        .FontSize(14).Bold().FontColor("#2E7D32");
+                    inner.Item().PaddingTop(8).AlignCenter().Text(
+                        "Your website currently passes all checks. Re-run your scan after content " +
+                        "or design changes to ensure continued compliance.")
+                        .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
+                });
+            }
+            else
+            {
+                var priorityNumber = 1;
+                foreach (var (impact, label, color, bg) in new[]
+                {
+                    ("critical", "Fix Immediately",   "#D32F2F", "#FFEBEE"),
+                    ("serious",  "Fix Soon",          "#F57C00", "#FFF3E0"),
+                    ("moderate", "Fix When Possible", "#F9A825", "#FFFDE7"),
+                    ("minor",    "Nice to Have",      "#388E3C", "#E8F5E9"),
+                })
+                {
+                    var groups = byImpact[impact];
+                    if (groups.Count == 0) continue;
+
+                    var title = $"Priority {priorityNumber++} — {label}";
+                    WhatNextPriorityBlock(col.Item(), title, groups, color, bg);
+                }
+            }
+
+            col.Item().PaddingTop(24).Text("General Steps").FontSize(12).Bold().FontColor("#263238");
+            col.Item().PaddingTop(2).LineHorizontal(1).LineColor("#ECEFF1");
+
+            foreach (var (num, text) in new[]
+            {
+                ("1", "Fix critical and serious issues first — they block users with disabilities from core content."),
+                ("2", "Test with a real screen reader: NVDA (Windows, free) or VoiceOver (Mac/iOS, built-in)."),
+                ("3", "Verify keyboard-only navigation — tab through the entire page without using a mouse."),
+                ("4", "Check at 320 px viewport width to verify content reflows without horizontal scroll."),
+                ("5", "Re-run your scan at wcag-analyzer.com to confirm fixes and track your score over time."),
+            })
+            {
+                col.Item().PaddingTop(6).Row(row =>
+                {
+                    row.ConstantItem(22).Height(22).Background("#1A237E").AlignCenter().AlignMiddle()
+                        .Text(num).FontSize(9).Bold().FontColor(Colors.White);
+                    row.ConstantItem(10);
+                    row.RelativeItem().AlignMiddle()
+                        .Text(text).FontSize(10).FontColor("#37474F").LineHeight(1.4f);
+                });
+            }
+
+            col.Item().PaddingTop(24).Background("#E8EAF6").Padding(18).Column(cta =>
+            {
+                cta.Item().AlignCenter().Text("Re-test your website after fixes")
+                    .FontSize(13).Bold().FontColor("#1A237E");
+                cta.Item().PaddingTop(6).AlignCenter()
+                    .Text("Run a new scan to confirm issues are resolved and watch your score improve.")
+                    .FontSize(10).FontColor("#37474F").LineHeight(1.45f);
+                cta.Item().PaddingTop(10).AlignCenter()
+                    .Text("wcag-analyzer.com")
+                    .FontSize(12).Bold().FontColor("#1565C0").Underline();
+            });
+        });
+    }
+
+    private static void WhatNextPriorityBlock(
+        IContainer container,
+        string title,
+        List<IGrouping<string, AnalysisResultDto>> groups,
+        string color,
+        string bg)
+    {
+        container.PaddingTop(14).Column(block =>
+        {
+            block.Item().Background(color).Padding(8)
+                .Text(title).FontSize(10).Bold().FontColor(Colors.White);
+
+            foreach (var group in groups)
+            {
+                var friendlyName = FriendlyNames.GetValueOrDefault(group.Key, group.Key);
+                var wcag         = WcagCriteria.GetValueOrDefault(group.Key, "");
+                var guidance     = FixGuidance.GetValueOrDefault(group.Key,
+                    "Review and fix this accessibility issue according to WCAG guidelines.");
+                var count = group.Count();
+
+                block.Item()
+                    .Background(bg)
+                    .BorderBottom(1).BorderColor("#ECEFF1")
+                    .Padding(10)
+                    .Column(item =>
+                    {
+                        item.Item().Row(row =>
+                        {
+                            row.RelativeItem().Text(friendlyName)
+                                .FontSize(10).Bold().FontColor(color);
+                            if (!string.IsNullOrEmpty(wcag))
+                                row.ConstantItem(58).AlignRight()
+                                    .Text(wcag).FontSize(8).FontColor("#90A4AE");
+                        });
+                        item.Item().PaddingTop(2)
+                            .Text($"{count} instance{(count > 1 ? "s" : "")} on this page")
+                            .FontSize(8).FontColor("#78909C");
+                        item.Item().PaddingTop(5)
+                            .Text(guidance).FontSize(9).FontColor("#37474F").LineHeight(1.4f);
+                    });
             }
         });
     }
