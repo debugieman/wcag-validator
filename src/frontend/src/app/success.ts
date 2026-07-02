@@ -2,13 +2,56 @@ import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 
+const RULE_NAMES: Record<string, string> = {
+  'color-contrast':                   'Low Color Contrast',
+  'image-alt':                        'Missing Image Alt Text',
+  'svg-image-missing-alt':            'Missing SVG Alt Text',
+  'button-name':                      'Unlabelled Button',
+  'link-name':                        'Unlabelled Link',
+  'input-missing-label':              'Form Field Without Label',
+  'select-textarea-missing-label':    'Dropdown / Text Area Without Label',
+  'label':                            'Missing Form Label',
+  'html-has-lang':                    'Missing Page Language',
+  'heading-level-skipped':            'Skipped Heading Level',
+  'heading-first-not-h1':             'First Heading Is Not H1',
+  'skip-navigation-missing':          'Missing Skip Navigation Link',
+  'landmark-one-main':                'Missing Main Landmark',
+  'landmark-unique':                  'Duplicate Landmark Regions',
+  'region':                           'Content Outside Landmark Regions',
+  'list':                             'Incorrect List Structure',
+  'table-missing-caption':            'Table Without Caption',
+  'aria-allowed-role':                'Invalid ARIA Role',
+  'focus-visible-missing':            'Invisible Keyboard Focus',
+  'interactive-not-focusable':        'Element Not Keyboard Accessible',
+  'keyboard-trap':                    'Keyboard Focus Trap',
+  'reflow-horizontal-scroll':         'Horizontal Scroll at Small Viewport',
+  'touch-target-too-small':           'Touch Target Too Small',
+  'animation-reduced-motion-missing': 'Animation Ignores Reduced Motion',
+};
+
+const IMPACT_ORDER = ['critical', 'serious', 'moderate', 'minor'];
+
 interface AnalysisSummary {
+  id: string;
   status: string;
   score: number;
   critical: number;
   serious: number;
   moderate: number;
   minor: number;
+}
+
+interface Violation {
+  ruleId: string;
+  impact: string;
+  description: string;
+  htmlElement: string | null;
+}
+
+interface ViolationGroup {
+  impact: string;
+  label: string;
+  items: Violation[];
 }
 
 @Component({
@@ -55,7 +98,7 @@ interface AnalysisSummary {
           </div>
         </div>
 
-        <!-- Score card (revealed when done) -->
+        <!-- Score card + violations (revealed when done) -->
         @if (summary() && summary()!.status === 'Completed') {
           <div class="score-card score-card--reveal">
             <div class="score-number" [class]="scoreClass()">{{ summary()!.score }}</div>
@@ -83,6 +126,36 @@ interface AnalysisSummary {
             </div>
             <p class="score-report-note">Full report with all details sent to your email.</p>
           </div>
+
+          <!-- Violations list -->
+          @if (violationGroups().length > 0) {
+            <div class="violations-preview">
+              <h2 class="violations-heading">Issues found on your site</h2>
+              @for (group of violationGroups(); track group.impact) {
+                <div class="violation-group">
+                  <div class="violation-group-header">
+                    <span class="impact-chip {{ group.impact }}">{{ group.label }}</span>
+                    <span class="violation-group-count">{{ group.items.length }} issue{{ group.items.length !== 1 ? 's' : '' }}</span>
+                  </div>
+                  @for (v of group.items; track v.ruleId) {
+                    <div class="violation-item">
+                      <div class="violation-item-top">
+                        <span class="violation-rule-name">{{ ruleName(v.ruleId) }}</span>
+                      </div>
+                      <p class="violation-description">{{ v.description }}</p>
+                      @if (v.htmlElement) {
+                        <code class="violation-html">{{ v.htmlElement }}</code>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+              <p class="violations-pdf-note">
+                Full technical details and fix guidance are in your PDF report.
+              </p>
+            </div>
+          }
+
         } @else {
           <div class="analyzing-state">
             <div class="analyzing-steps">
@@ -120,6 +193,7 @@ interface AnalysisSummary {
 export class Success implements OnInit, OnDestroy {
   email   = signal('');
   summary = signal<AnalysisSummary | null>(null);
+  private violations = signal<Violation[]>([]);
 
   private pollInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -138,6 +212,32 @@ export class Success implements OnInit, OnDestroy {
     return sum && sum.critical === 0 && sum.serious === 0 && sum.moderate === 0 && sum.minor === 0;
   });
 
+  violationGroups = computed<ViolationGroup[]>(() => {
+    const all = this.violations();
+    if (all.length === 0) return [];
+
+    const grouped = new Map<string, Violation[]>();
+    for (const v of all) {
+      if (!grouped.has(v.impact)) grouped.set(v.impact, []);
+      grouped.get(v.impact)!.push(v);
+    }
+
+    const labelMap: Record<string, string> = {
+      critical: 'Critical',
+      serious:  'Serious',
+      moderate: 'Moderate',
+      minor:    'Minor',
+    };
+
+    return IMPACT_ORDER
+      .filter(impact => grouped.has(impact))
+      .map(impact => ({
+        impact,
+        label: labelMap[impact] ?? impact,
+        items: grouped.get(impact)!,
+      }));
+  });
+
   constructor(private route: ActivatedRoute, private http: HttpClient) {}
 
   ngOnInit() {
@@ -150,6 +250,10 @@ export class Success implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.pollInterval) clearInterval(this.pollInterval);
+  }
+
+  ruleName(ruleId: string): string {
+    return RULE_NAMES[ruleId] ?? ruleId.replace(/-/g, ' ');
   }
 
   private startPolling(email: string) {
@@ -165,6 +269,28 @@ export class Success implements OnInit, OnDestroy {
 
   private fetchSummary(email: string) {
     this.http.get<AnalysisSummary>(`/api/analysis/summary?email=${encodeURIComponent(email)}`)
-      .subscribe({ next: s => this.summary.set(s), error: () => {} });
+      .subscribe({
+        next: s => {
+          this.summary.set(s);
+          if (s.status === 'Completed' && this.violations().length === 0) {
+            this.fetchViolations(s.id);
+          }
+        },
+        error: () => {}
+      });
+  }
+
+  private fetchViolations(id: string) {
+    this.http.get<{ results: Violation[] }>(`/api/analysis/${id}`)
+      .subscribe({
+        next: detail => {
+          const impactRank: Record<string, number> = { critical: 0, serious: 1, moderate: 2, minor: 3 };
+          const sorted = [...detail.results].sort(
+            (a, b) => (impactRank[a.impact] ?? 4) - (impactRank[b.impact] ?? 4)
+          );
+          this.violations.set(sorted);
+        },
+        error: () => {}
+      });
   }
 }
