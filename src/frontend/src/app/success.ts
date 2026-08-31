@@ -140,7 +140,7 @@ interface CriterionGroup {
           <!-- Score card -->
           <div class="score-card score-card--reveal">
             <div class="score-number" [class]="scoreClass()">{{ summary()!.score }}</div>
-            <div class="score-label-text">out of 100</div>
+            <div class="score-label-text">{{ summary()!.score }}% of requirements met</div>
             <div class="score-bar-wrap">
               <div class="score-bar-fill" [class]="scoreClass()" [style.width.%]="summary()!.score"></div>
             </div>
