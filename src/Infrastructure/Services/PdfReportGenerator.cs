@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -197,7 +196,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
-                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Content().Element(c => ComposeCoverPage(c, logoSvg, analysis));
             });
 
@@ -207,7 +205,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
-                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Content().Element(ComposeAboutPage);
                 page.Footer().Element(c => ComposeFooter(c, email));
             });
@@ -218,7 +215,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
-                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Header().Element(c => ComposeHeader(c, logoSvg, analysis));
                 page.Content().Element(c => ComposeContent(c, analysis));
                 page.Footer().Element(c => ComposeFooter(c, email));
@@ -230,7 +226,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
-                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Content().Element(c => ComposeWhatNextPage(c, analysis));
                 page.Footer().Element(c => ComposeFooter(c, email));
             });
@@ -1032,26 +1027,6 @@ public class PdfReportGenerator : IPdfReportGenerator
             col.Item().PaddingTop(3).Text($"Licensed to: {email}")
                 .FontSize(7).FontColor("#B0BEC5").Italic();
         });
-    }
-
-    private static string BuildWatermarkSvg(Size size, string email)
-    {
-        var w = (int)size.Width;
-        var h = (int)size.Height;
-        var cx = w / 2;
-        var cy = h / 2;
-        var safeEmail = System.Security.SecurityElement.Escape(email) ?? email;
-        var text = $"Licensed to: {safeEmail}";
-
-        var sb = new StringBuilder();
-        sb.Append($"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">""");
-        sb.Append($"""<g transform="rotate(-40, {cx}, {cy})" opacity="0.13" font-family="Arial" font-size="20" fill="#888888" text-anchor="middle">""");
-
-        for (var y = -h; y < h * 2; y += 110)
-            sb.Append($"""<text x="{cx}" y="{y}">{text}</text>""");
-
-        sb.Append("</g></svg>");
-        return sb.ToString();
     }
 
     private static Dictionary<string, List<AnalysisResultDto>> GroupByImpact(List<AnalysisResultDto> results) =>
