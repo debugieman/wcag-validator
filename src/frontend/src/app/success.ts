@@ -29,7 +29,34 @@ const RULE_NAMES: Record<string, string> = {
   'animation-reduced-motion-missing': 'Animation Ignores Reduced Motion',
 };
 
-const IMPACT_ORDER = ['critical', 'serious', 'moderate', 'minor'];
+const WCAG_RULE_MAP: Record<string, { criterion: string; name: string }> = {
+  'color-contrast':                   { criterion: '1.4.3',  name: 'Contrast (Minimum)' },
+  'image-alt':                        { criterion: '1.1.1',  name: 'Non-text Content' },
+  'svg-image-missing-alt':            { criterion: '1.1.1',  name: 'Non-text Content' },
+  'button-name':                      { criterion: '4.1.2',  name: 'Name, Role, Value' },
+  'link-name':                        { criterion: '2.4.4',  name: 'Link Purpose' },
+  'input-missing-label':              { criterion: '1.3.1',  name: 'Info and Relationships' },
+  'select-textarea-missing-label':    { criterion: '1.3.1',  name: 'Info and Relationships' },
+  'label':                            { criterion: '1.3.1',  name: 'Info and Relationships' },
+  'html-has-lang':                    { criterion: '3.1.1',  name: 'Language of Page' },
+  'heading-level-skipped':            { criterion: '1.3.1',  name: 'Info and Relationships' },
+  'heading-first-not-h1':             { criterion: '1.3.1',  name: 'Info and Relationships' },
+  'skip-navigation-missing':          { criterion: '2.4.1',  name: 'Bypass Blocks' },
+  'landmark-one-main':                { criterion: '1.3.6',  name: 'Identify Purpose' },
+  'landmark-unique':                  { criterion: '1.3.6',  name: 'Identify Purpose' },
+  'region':                           { criterion: '1.3.6',  name: 'Identify Purpose' },
+  'list':                             { criterion: '1.3.1',  name: 'Info and Relationships' },
+  'table-missing-caption':            { criterion: '1.3.1',  name: 'Info and Relationships' },
+  'aria-allowed-role':                { criterion: '4.1.2',  name: 'Name, Role, Value' },
+  'focus-visible-missing':            { criterion: '2.4.7',  name: 'Focus Visible' },
+  'interactive-not-focusable':        { criterion: '2.1.1',  name: 'Keyboard' },
+  'keyboard-trap':                    { criterion: '2.1.2',  name: 'No Keyboard Trap' },
+  'reflow-horizontal-scroll':         { criterion: '1.4.10', name: 'Reflow' },
+  'touch-target-too-small':           { criterion: '2.5.5',  name: 'Target Size' },
+  'animation-reduced-motion-missing': { criterion: '2.3.3',  name: 'Animation from Interactions' },
+};
+
+const IMPACT_RANK: Record<string, number> = { critical: 0, serious: 1, moderate: 2, minor: 3 };
 
 interface AnalysisSummary {
   id: string;
@@ -48,10 +75,19 @@ interface Violation {
   htmlElement: string | null;
 }
 
-interface ViolationGroup {
+interface UniqueRule {
+  ruleId: string;
   impact: string;
-  label: string;
-  items: Violation[];
+  name: string;
+  count: number;
+  description: string;
+}
+
+interface CriterionGroup {
+  criterion: string;
+  criterionName: string;
+  worstImpact: string;
+  rules: UniqueRule[];
 }
 
 @Component({
@@ -98,60 +134,82 @@ interface ViolationGroup {
           </div>
         </div>
 
-        <!-- Score card + violations (revealed when done) -->
+        <!-- Dashboard + violations (revealed when done) -->
         @if (summary() && summary()!.status === 'Completed') {
+
+          <!-- Score card -->
           <div class="score-card score-card--reveal">
             <div class="score-number" [class]="scoreClass()">{{ summary()!.score }}</div>
-            <div class="score-label-text">out of 100</div>
+            <div class="score-label-text">{{ summary()!.score }}% of requirements met</div>
             <div class="score-bar-wrap">
               <div class="score-bar-fill" [class]="scoreClass()" [style.width.%]="summary()!.score"></div>
             </div>
             <div class="score-tag" [class]="scoreClass()">{{ scoreLabel() }}</div>
-            <div class="impact-breakdown">
-              @if (summary()!.critical > 0) {
-                <span class="impact-chip critical">{{ summary()!.critical }} Critical</span>
-              }
-              @if (summary()!.serious > 0) {
-                <span class="impact-chip serious">{{ summary()!.serious }} Serious</span>
-              }
-              @if (summary()!.moderate > 0) {
-                <span class="impact-chip moderate">{{ summary()!.moderate }} Moderate</span>
-              }
-              @if (summary()!.minor > 0) {
-                <span class="impact-chip minor">{{ summary()!.minor }} Minor</span>
-              }
-              @if (noViolations()) {
-                <span class="impact-chip good">No violations found</span>
-              }
-            </div>
             <p class="score-report-note">Full report with all details sent to your email.</p>
           </div>
 
-          <!-- Violations list -->
-          @if (violationGroups().length > 0) {
+          <!-- Dashboard — impact tiles -->
+          @if (!noViolations()) {
+            <div class="impact-dashboard">
+              @if (summary()!.critical > 0) {
+                <div class="impact-tile critical">
+                  <span class="impact-tile-count">{{ summary()!.critical }}</span>
+                  <span class="impact-tile-label">Critical</span>
+                </div>
+              }
+              @if (summary()!.serious > 0) {
+                <div class="impact-tile serious">
+                  <span class="impact-tile-count">{{ summary()!.serious }}</span>
+                  <span class="impact-tile-label">Serious</span>
+                </div>
+              }
+              @if (summary()!.moderate > 0) {
+                <div class="impact-tile moderate">
+                  <span class="impact-tile-count">{{ summary()!.moderate }}</span>
+                  <span class="impact-tile-label">Moderate</span>
+                </div>
+              }
+              @if (summary()!.minor > 0) {
+                <div class="impact-tile minor">
+                  <span class="impact-tile-count">{{ summary()!.minor }}</span>
+                  <span class="impact-tile-label">Minor</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="no-violations-banner">
+              <span class="no-violations-icon">✓</span>
+              No accessibility violations found — great work!
+            </div>
+          }
+
+          <!-- Violations grouped by WCAG criterion -->
+          @if (criterionGroups().length > 0) {
             <div class="violations-preview">
-              <h2 class="violations-heading">Issues found on your site</h2>
-              @for (group of violationGroups(); track group.impact) {
-                <div class="violation-group">
-                  <div class="violation-group-header">
-                    <span class="impact-chip {{ group.impact }}">{{ group.label }}</span>
-                    <span class="violation-group-count">{{ group.items.length }} issue{{ group.items.length !== 1 ? 's' : '' }}</span>
+              <h2 class="violations-heading">Issues by WCAG criterion</h2>
+              @for (group of criterionGroups(); track group.criterion) {
+                <div class="criterion-group">
+                  <div class="criterion-group-header">
+                    <span class="criterion-badge">{{ group.criterion }}</span>
+                    <span class="criterion-name">{{ group.criterionName }}</span>
+                    <span class="impact-chip {{ group.worstImpact }} criterion-worst">{{ group.worstImpact }}</span>
                   </div>
-                  @for (v of group.items; track v.ruleId) {
+                  @for (rule of group.rules; track rule.ruleId) {
                     <div class="violation-item">
                       <div class="violation-item-top">
-                        <span class="violation-rule-name">{{ ruleName(v.ruleId) }}</span>
+                        <span class="impact-chip {{ rule.impact }}">{{ rule.impact }}</span>
+                        <span class="violation-rule-name">{{ rule.name }}</span>
+                        @if (rule.count > 1) {
+                          <span class="violation-count">×{{ rule.count }}</span>
+                        }
                       </div>
-                      <p class="violation-description">{{ v.description }}</p>
-                      @if (v.htmlElement) {
-                        <code class="violation-html">{{ v.htmlElement }}</code>
-                      }
+                      <p class="violation-description">{{ rule.description }}</p>
                     </div>
                   }
                 </div>
               }
               <p class="violations-pdf-note">
-                Full technical details and fix guidance are in your PDF report.
+                Full technical details, HTML examples and fix guidance are in your PDF report.
               </p>
             </div>
           }
@@ -212,30 +270,55 @@ export class Success implements OnInit, OnDestroy {
     return sum && sum.critical === 0 && sum.serious === 0 && sum.moderate === 0 && sum.minor === 0;
   });
 
-  violationGroups = computed<ViolationGroup[]>(() => {
+  criterionGroups = computed<CriterionGroup[]>(() => {
     const all = this.violations();
     if (all.length === 0) return [];
 
-    const grouped = new Map<string, Violation[]>();
+    // Deduplicate by ruleId, count instances
+    const ruleMap = new Map<string, UniqueRule>();
     for (const v of all) {
-      if (!grouped.has(v.impact)) grouped.set(v.impact, []);
-      grouped.get(v.impact)!.push(v);
+      if (!ruleMap.has(v.ruleId)) {
+        ruleMap.set(v.ruleId, {
+          ruleId:      v.ruleId,
+          impact:      v.impact,
+          name:        RULE_NAMES[v.ruleId] ?? v.ruleId.replace(/-/g, ' '),
+          count:       0,
+          description: v.description,
+        });
+      }
+      ruleMap.get(v.ruleId)!.count++;
     }
 
-    const labelMap: Record<string, string> = {
-      critical: 'Critical',
-      serious:  'Serious',
-      moderate: 'Moderate',
-      minor:    'Minor',
-    };
+    // Group unique rules by WCAG criterion
+    const criterionMap = new Map<string, CriterionGroup>();
+    for (const rule of ruleMap.values()) {
+      const wcag = WCAG_RULE_MAP[rule.ruleId] ?? { criterion: 'Other', name: 'Other checks' };
+      const key  = wcag.criterion;
+      if (!criterionMap.has(key)) {
+        criterionMap.set(key, {
+          criterion:     wcag.criterion,
+          criterionName: wcag.name,
+          worstImpact:   rule.impact,
+          rules:         [],
+        });
+      }
+      const group = criterionMap.get(key)!;
+      group.rules.push(rule);
+      if ((IMPACT_RANK[rule.impact] ?? 4) < (IMPACT_RANK[group.worstImpact] ?? 4)) {
+        group.worstImpact = rule.impact;
+      }
+    }
 
-    return IMPACT_ORDER
-      .filter(impact => grouped.has(impact))
-      .map(impact => ({
-        impact,
-        label: labelMap[impact] ?? impact,
-        items: grouped.get(impact)!,
-      }));
+    // Sort rules within each group by impact
+    for (const g of criterionMap.values()) {
+      g.rules.sort((a, b) => (IMPACT_RANK[a.impact] ?? 4) - (IMPACT_RANK[b.impact] ?? 4));
+    }
+
+    // Sort groups: worst impact first, then criterion number
+    return [...criterionMap.values()].sort((a, b) => {
+      const diff = (IMPACT_RANK[a.worstImpact] ?? 4) - (IMPACT_RANK[b.worstImpact] ?? 4);
+      return diff !== 0 ? diff : a.criterion.localeCompare(b.criterion, undefined, { numeric: true });
+    });
   });
 
   constructor(private route: ActivatedRoute, private http: HttpClient) {}
@@ -250,10 +333,6 @@ export class Success implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.pollInterval) clearInterval(this.pollInterval);
-  }
-
-  ruleName(ruleId: string): string {
-    return RULE_NAMES[ruleId] ?? ruleId.replace(/-/g, ' ');
   }
 
   private startPolling(email: string) {
@@ -283,13 +362,7 @@ export class Success implements OnInit, OnDestroy {
   private fetchViolations(id: string) {
     this.http.get<{ results: Violation[] }>(`/api/analysis/${id}`)
       .subscribe({
-        next: detail => {
-          const impactRank: Record<string, number> = { critical: 0, serious: 1, moderate: 2, minor: 3 };
-          const sorted = [...detail.results].sort(
-            (a, b) => (impactRank[a.impact] ?? 4) - (impactRank[b.impact] ?? 4)
-          );
-          this.violations.set(sorted);
-        },
+        next: detail => this.violations.set(detail.results),
         error: () => {}
       });
   }
