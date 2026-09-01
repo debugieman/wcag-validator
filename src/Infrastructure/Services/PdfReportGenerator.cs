@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -141,6 +140,47 @@ public class PdfReportGenerator : IPdfReportGenerator
 
     private static readonly Lazy<string?> LogoSvg = new(LoadLogoSvg);
 
+    private static class AboutContent
+    {
+        public const string Title = "WCAG Analyzer — Beyond the Built-in";
+
+        public const string IntroHeading =
+            "Most accessibility tools stop at what a browser plugin can see.";
+
+        public const string IntroBody =
+            "Tools like axe-core and Lighthouse provide a solid baseline — but they were built as " +
+            "general-purpose checkers, not dedicated accessibility auditors. They miss heading " +
+            "hierarchy errors, skip-navigation gaps, SVG labelling issues, and a growing range " +
+            "of interaction-level checks that only surface when a real browser engine navigates " +
+            "your page the way assistive technology does.";
+
+        public const string Section1Heading = "Built on Playwright. Built for real users.";
+
+        public const string Section1Body =
+            "WCAG Analyzer is powered by Playwright — a full browser automation engine. " +
+            "We test your site the way a real user experiences it: fully rendered, " +
+            "interactive, and measured against the criteria that matter under the " +
+            "EU Accessibility Act (EAA), effective June 2025.";
+
+        public const string Section2Heading = "Actively developed. Continuously improving.";
+
+        public const string Section2Body =
+            "This report comes from a product that gets better every month. We add new checks " +
+            "regularly, improve scoring accuracy, and refine our analysis based on real-world " +
+            "feedback. What you're holding is not a snapshot of a finished tool — it's the " +
+            "output of a living product, built with accessibility professionals in mind.";
+
+        public const string FeedbackHeading = "We'd love your feedback";
+
+        public const string FeedbackBody =
+            "Found a false positive? Missed an issue? Have a suggestion? " +
+            "Every message is read and taken seriously.";
+
+        public const string FeedbackEmail = "debugieman@gmail.com";
+
+        public const string FooterText = "Thank you for choosing WCAG Analyzer.";
+    }
+
     public byte[] Generate(GetAnalysisByIdResult analysis)
     {
         QuestPDF.Settings.License = LicenseType.Community;
@@ -156,7 +196,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
-                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Content().Element(c => ComposeCoverPage(c, logoSvg, analysis));
             });
 
@@ -166,7 +205,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
-                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Content().Element(ComposeAboutPage);
                 page.Footer().Element(c => ComposeFooter(c, email));
             });
@@ -177,7 +215,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
-                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Header().Element(c => ComposeHeader(c, logoSvg, analysis));
                 page.Content().Element(c => ComposeContent(c, analysis));
                 page.Footer().Element(c => ComposeFooter(c, email));
@@ -189,7 +226,6 @@ public class PdfReportGenerator : IPdfReportGenerator
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
 
-                page.Foreground().Svg(size => BuildWatermarkSvg(size, email));
                 page.Content().Element(c => ComposeWhatNextPage(c, analysis));
                 page.Footer().Element(c => ComposeFooter(c, email));
             });
@@ -915,21 +951,16 @@ public class PdfReportGenerator : IPdfReportGenerator
     {
         container.PaddingTop(20).Column(col =>
         {
-            col.Item().Text("WCAG Analyzer — Beyond the Built-in")
+            col.Item().Text(AboutContent.Title)
                 .FontSize(22).Bold().FontColor("#1A237E");
 
             col.Item().PaddingTop(4).LineHorizontal(2).LineColor("#1A237E");
 
             col.Item().PaddingTop(24).Background("#F8F9FF").Padding(16).Column(inner =>
             {
-                inner.Item().Text("Most accessibility tools stop at what a browser plugin can see.")
+                inner.Item().Text(AboutContent.IntroHeading)
                     .FontSize(12).Bold().FontColor("#263238");
-                inner.Item().PaddingTop(8).Text(
-                    "Tools like axe-core and Lighthouse provide a solid baseline — but they were built as " +
-                    "general-purpose checkers, not dedicated accessibility auditors. They miss heading " +
-                    "hierarchy errors, skip-navigation gaps, SVG labelling issues, and a growing range " +
-                    "of interaction-level checks that only surface when a real browser engine navigates " +
-                    "your page the way assistive technology does.")
+                inner.Item().PaddingTop(8).Text(AboutContent.IntroBody)
                     .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
             });
 
@@ -939,13 +970,9 @@ public class PdfReportGenerator : IPdfReportGenerator
                 row.ConstantItem(16);
                 row.RelativeItem().Column(inner =>
                 {
-                    inner.Item().Text("Built on Playwright. Built for real users.")
+                    inner.Item().Text(AboutContent.Section1Heading)
                         .FontSize(12).Bold().FontColor("#1A237E");
-                    inner.Item().PaddingTop(6).Text(
-                        "WCAG Analyzer is powered by Playwright — a full browser automation engine. " +
-                        "We test your site the way a real user experiences it: fully rendered, " +
-                        "interactive, and measured against the criteria that matter under the " +
-                        "EU Accessibility Act (EAA), effective June 2025.")
+                    inner.Item().PaddingTop(6).Text(AboutContent.Section1Body)
                         .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
                 });
             });
@@ -956,31 +983,25 @@ public class PdfReportGenerator : IPdfReportGenerator
                 row.ConstantItem(16);
                 row.RelativeItem().Column(inner =>
                 {
-                    inner.Item().Text("Actively developed. Continuously improving.")
+                    inner.Item().Text(AboutContent.Section2Heading)
                         .FontSize(12).Bold().FontColor("#388E3C");
-                    inner.Item().PaddingTop(6).Text(
-                        "This report comes from a product that gets better every month. We add new checks " +
-                        "regularly, improve scoring accuracy, and refine our analysis based on real-world " +
-                        "feedback. What you're holding is not a snapshot of a finished tool — it's the " +
-                        "output of a living product, built with accessibility professionals in mind.")
+                    inner.Item().PaddingTop(6).Text(AboutContent.Section2Body)
                         .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
                 });
             });
 
             col.Item().PaddingTop(32).Background("#E8EAF6").Padding(20).Column(inner =>
             {
-                inner.Item().AlignCenter().Text("We'd love your feedback")
+                inner.Item().AlignCenter().Text(AboutContent.FeedbackHeading)
                     .FontSize(14).Bold().FontColor("#1A237E");
-                inner.Item().PaddingTop(8).AlignCenter().Text(
-                    "Found a false positive? Missed an issue? Have a suggestion? " +
-                    "Every message is read and taken seriously.")
+                inner.Item().PaddingTop(8).AlignCenter().Text(AboutContent.FeedbackBody)
                     .FontSize(10).FontColor("#37474F").LineHeight(1.5f);
-                inner.Item().PaddingTop(12).AlignCenter().Text("debugieman@gmail.com")
+                inner.Item().PaddingTop(12).AlignCenter().Text(AboutContent.FeedbackEmail)
                     .FontSize(12).Bold().FontColor("#1565C0").Underline();
             });
 
             col.Item().Extend().AlignBottom().PaddingBottom(8).AlignCenter()
-                .Text("Thank you for choosing WCAG Analyzer.")
+                .Text(AboutContent.FooterText)
                 .FontSize(9).Italic().FontColor("#90A4AE");
         });
     }
@@ -1006,26 +1027,6 @@ public class PdfReportGenerator : IPdfReportGenerator
             col.Item().PaddingTop(3).Text($"Licensed to: {email}")
                 .FontSize(7).FontColor("#B0BEC5").Italic();
         });
-    }
-
-    private static string BuildWatermarkSvg(Size size, string email)
-    {
-        var w = (int)size.Width;
-        var h = (int)size.Height;
-        var cx = w / 2;
-        var cy = h / 2;
-        var safeEmail = System.Security.SecurityElement.Escape(email) ?? email;
-        var text = $"Licensed to: {safeEmail}";
-
-        var sb = new StringBuilder();
-        sb.Append($"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">""");
-        sb.Append($"""<g transform="rotate(-40, {cx}, {cy})" opacity="0.13" font-family="Arial" font-size="20" fill="#888888" text-anchor="middle">""");
-
-        for (var y = -h; y < h * 2; y += 110)
-            sb.Append($"""<text x="{cx}" y="{y}">{text}</text>""");
-
-        sb.Append("</g></svg>");
-        return sb.ToString();
     }
 
     private static Dictionary<string, List<AnalysisResultDto>> GroupByImpact(List<AnalysisResultDto> results) =>
