@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Text;
 using QuestPDF.Fluent;
-using WcagAnalyzer.Application.Services;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using WcagAnalyzer.Application.Features.Analysis.Queries;
