@@ -1,4 +1,5 @@
 using MediatR;
+using WcagAnalyzer.Application.Services;
 using WcagAnalyzer.Domain.Repositories;
 
 namespace WcagAnalyzer.Application.Features.Analysis.Queries;
@@ -36,35 +37,10 @@ public class GetAnalysisSummaryByEmailHandler : IRequestHandler<GetAnalysisSumma
         var serious  = results.Count(r => r.Impact == "serious");
         var moderate = results.Count(r => r.Impact == "moderate");
         var minor    = results.Count(r => r.Impact == "minor");
-        var score    = status == "Completed" ? CalculateScore(results) : 0;
+        var score    = status == "Completed"
+            ? AccessibilityScorer.Calculate(results.Select(r => (r.RuleId, r.Impact)))
+            : 0;
 
         return new AnalysisSummaryResult(analysis.Id, status, score, critical, serious, moderate, minor);
-    }
-
-    private static int CalculateScore(IEnumerable<Domain.Entities.AnalysisResult> results)
-    {
-        const int totalRules = 111;
-
-        var uniqueRules = results.GroupBy(r => r.RuleId).ToList();
-        int uniqueViolating = uniqueRules.Count;
-        double passRate = (double)Math.Max(0, totalRules - uniqueViolating) / totalRules;
-
-        var uniqueByImpact = uniqueRules
-            .GroupBy(g => g.First().Impact)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        int critical = uniqueByImpact.GetValueOrDefault("critical", 0);
-        int serious  = uniqueByImpact.GetValueOrDefault("serious",  0);
-        int moderate = uniqueByImpact.GetValueOrDefault("moderate", 0);
-        int minor    = uniqueByImpact.GetValueOrDefault("minor",    0);
-
-        double logBase = Math.Log2(totalRules + 1);
-        double penalty =
-            15 * Math.Log2(1 + critical)  / logBase +
-             8 * Math.Log2(1 + serious)   / logBase +
-             4 * Math.Log2(1 + moderate)  / logBase +
-             1 * Math.Log2(1 + minor)     / logBase;
-
-        return (int)Math.Round(Math.Max(0, passRate * 100 - penalty));
     }
 }

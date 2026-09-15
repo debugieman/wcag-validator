@@ -474,32 +474,8 @@ public class PdfReportGenerator : IPdfReportGenerator
         });
     }
 
-    internal static int CalculateScore(List<AnalysisResultDto> results)
-    {
-        const int totalRules = 111;
-
-        var uniqueRules = results.GroupBy(r => r.RuleId).ToList();
-        int uniqueViolating = uniqueRules.Count;
-        double passRate = (double)Math.Max(0, totalRules - uniqueViolating) / totalRules;
-
-        var uniqueByImpact = uniqueRules
-            .GroupBy(g => g.First().Impact)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        int critical = uniqueByImpact.GetValueOrDefault("critical", 0);
-        int serious  = uniqueByImpact.GetValueOrDefault("serious",  0);
-        int moderate = uniqueByImpact.GetValueOrDefault("moderate", 0);
-        int minor    = uniqueByImpact.GetValueOrDefault("minor",    0);
-
-        double logBase = Math.Log2(totalRules + 1);
-        double penalty =
-            15 * Math.Log2(1 + critical)  / logBase +
-             8 * Math.Log2(1 + serious)   / logBase +
-             4 * Math.Log2(1 + moderate)  / logBase +
-             1 * Math.Log2(1 + minor)     / logBase;
-
-        return (int)Math.Round(Math.Max(0, passRate * 100 - penalty));
-    }
+    internal static int CalculateScore(List<AnalysisResultDto> results) =>
+        AccessibilityScorer.Calculate(results.Select(r => (r.RuleId, r.Impact)));
 
     private static void ComposeContent(IContainer container, GetAnalysisByIdResult analysis)
     {
