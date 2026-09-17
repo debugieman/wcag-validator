@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using WcagAnalyzer.Application.Features.Analysis.Commands;
 using WcagAnalyzer.Application.Features.Analysis.Queries;
@@ -44,15 +45,27 @@ builder.Services.AddScoped<IEmailSender, ResendEmailSender>();
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(WcagAnalyzer.Application.AssemblyMarker).Assembly));
 
-// CORS
+// CORS — origins from config (App:CorsOrigins), fallback to localhost for dev
+var corsOrigins = builder.Configuration["App:CorsOrigins"]
+    ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    ?? ["http://localhost:4200", "http://localhost"];
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:4200", "http://localhost")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
+});
+
+// Forwarded headers (nginx proxy support)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
 });
 
 // OpenAPI / Swagger
@@ -75,7 +88,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Behind nginx reverse proxy — trust forwarded headers, skip internal HTTPS redirect
+app.UseForwardedHeaders();
+if (!app.Configuration.GetValue<bool>("App:BehindProxy"))
+    app.UseHttpsRedirection();
+
 app.UseCors();
 
 // Test endpoint
