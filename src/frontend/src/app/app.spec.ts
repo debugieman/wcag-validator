@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
 import { App } from './app';
 
 describe('App', () => {
@@ -11,7 +12,8 @@ describe('App', () => {
       imports: [App],
       providers: [
         provideHttpClient(),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        provideRouter([])
       ]
     }).compileComponents();
   });
@@ -31,7 +33,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('WCAG Analyzer');
+    expect(compiled.querySelector('h1')?.textContent).toContain('accessible to everyone');
   });
 
   describe('isValidEmail', () => {
@@ -79,11 +81,11 @@ describe('App', () => {
   });
 
   describe('isValidUrl', () => {
-    it('should accept valid http URL', () => {
+    it('should reject http URL (HTTPS only)', () => {
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
       app.url.set('http://example.com');
-      expect(app.isValidUrl()).toBe(true);
+      expect(app.isValidUrl()).toBe(false);
     });
 
     it('should accept valid https URL', () => {
@@ -181,11 +183,11 @@ describe('App', () => {
 
       app.onAnalyze();
 
-      expect(app.message()).toBe('Invalid URL format. Use: https://example.com');
+      expect(app.message()).toBe('Only HTTPS URLs are supported. Use: https://example.com');
       expect(app.messageType()).toBe('error');
     });
 
-    it('should set loading state and send HTTP POST for valid URL', () => {
+    it('should set loading state and send checkout POST for valid URL', () => {
       httpTesting = TestBed.inject(HttpTestingController);
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
@@ -197,18 +199,16 @@ describe('App', () => {
       expect(app.isLoading()).toBe(true);
       expect(app.message()).toBe('');
 
-      const req = httpTesting.expectOne('/api/analysis');
+      const req = httpTesting.expectOne('/api/checkout');
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ url: 'https://example.com', email: 'user@example.com' });
-
-      req.flush({ id: 'test-id-123' });
-
-      expect(app.isLoading()).toBe(false);
-      expect(app.messageType()).toBe('success');
-      expect(app.message()).toContain('test-id-123');
+      expect(req.request.body).toEqual({
+        url: 'https://example.com/',
+        email: 'user@example.com',
+        deepScan: false
+      });
     });
 
-    it('should show error message on HTTP failure', () => {
+    it('should show rate limit message on 429 response', () => {
       httpTesting = TestBed.inject(HttpTestingController);
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
@@ -217,20 +217,38 @@ describe('App', () => {
 
       app.onAnalyze();
 
-      const req = httpTesting.expectOne('/api/analysis');
-      req.error(new ProgressEvent('error'));
+      const req = httpTesting.expectOne('/api/checkout');
+      req.flush({ message: 'Too many requests' }, { status: 429, statusText: 'Too Many Requests' });
 
       expect(app.isLoading()).toBe(false);
       expect(app.messageType()).toBe('error');
-      expect(app.message()).toBe('Error: Could not connect to API');
+      expect(app.message()).toBe('This domain was already analyzed in the last 24 hours. Please try again later.');
     });
 
-    it('should disable button during loading', async () => {
+    it('should show generic error message on HTTP failure', () => {
       httpTesting = TestBed.inject(HttpTestingController);
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
       app.email.set('user@example.com');
       app.url.set('https://example.com');
+
+      app.onAnalyze();
+
+      const req = httpTesting.expectOne('/api/checkout');
+      req.error(new ProgressEvent('error'));
+
+      expect(app.isLoading()).toBe(false);
+      expect(app.messageType()).toBe('error');
+      expect(app.message()).toBe('Something went wrong. Please try again.');
+    });
+
+    it('should disable button and show loading text while request is pending', async () => {
+      httpTesting = TestBed.inject(HttpTestingController);
+      const fixture = TestBed.createComponent(App);
+      const app = fixture.componentInstance;
+      app.email.set('user@example.com');
+      app.url.set('https://example.com');
+      app.termsAccepted.set(true);
 
       app.onAnalyze();
       fixture.detectChanges();
@@ -238,40 +256,13 @@ describe('App', () => {
 
       const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
       expect(button.disabled).toBe(true);
-      expect(button.textContent?.trim()).toBe('Saving...');
+      expect(button.textContent?.trim()).toBe('Analyzing...');
 
-      const req = httpTesting.expectOne('/api/analysis');
-      req.flush({ id: 'test-id' });
-
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      expect(button.disabled).toBe(false);
-      expect(button.textContent?.trim()).toBe('Analyze');
+      httpTesting.expectOne('/api/checkout');
     });
   });
 
   describe('message display', () => {
-    it('should display success message in template', async () => {
-      httpTesting = TestBed.inject(HttpTestingController);
-      const fixture = TestBed.createComponent(App);
-      const app = fixture.componentInstance;
-      app.email.set('user@example.com');
-      app.url.set('https://example.com');
-
-      app.onAnalyze();
-      const req = httpTesting.expectOne('/api/analysis');
-      req.flush({ id: 'abc-123' });
-
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      const messageEl = fixture.nativeElement.querySelector('.message') as HTMLElement;
-      expect(messageEl).toBeTruthy();
-      expect(messageEl.textContent).toContain('abc-123');
-      expect(messageEl.classList.contains('error')).toBe(false);
-    });
-
     it('should display error message with error class', async () => {
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;

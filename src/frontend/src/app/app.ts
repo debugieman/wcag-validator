@@ -37,6 +37,8 @@ export class App implements AfterViewInit {
   ];
 
   ngAfterViewInit() {
+    if (typeof IntersectionObserver === 'undefined') return;
+
     this.zone.runOutsideAngular(() => {
       this.initFadeInObserver();
       this.initCounterObserver();
