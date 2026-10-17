@@ -88,9 +88,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// Behind nginx reverse proxy — trust forwarded headers, skip internal HTTPS redirect
+// Behind nginx reverse proxy — trust forwarded headers, skip internal HTTPS redirect.
+// Also skipped in Development so locally forwarded webhooks (e.g. via ngrok) aren't redirected.
 app.UseForwardedHeaders();
-if (!app.Configuration.GetValue<bool>("App:BehindProxy"))
+if (!app.Configuration.GetValue<bool>("App:BehindProxy") && !app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 
 app.UseCors();
