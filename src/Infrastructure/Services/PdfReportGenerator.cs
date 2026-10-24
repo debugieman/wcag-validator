@@ -814,7 +814,9 @@ public class PdfReportGenerator : IPdfReportGenerator
         });
     }
 
-    private static void ComposeConclusion(IContainer container, List<AnalysisResultDto> results, int score, string url)
+    internal readonly record struct ConclusionText(string Opening, string LegalNote, string NextSteps);
+
+    internal static ConclusionText BuildConclusionText(List<AnalysisResultDto> results, int score, string url)
     {
         var critical = results.Count(r => r.Impact == "critical");
         var serious  = results.Count(r => r.Impact == "serious");
@@ -853,6 +855,13 @@ public class PdfReportGenerator : IPdfReportGenerator
                 ? $"Across {uniqueRules} unique rule violations, these will deliver the highest accessibility improvement per hour of developer time."
                 : "These are the highest-impact issues on your site right now.");
 
+        return new ConclusionText(opening, legalNote, nextSteps);
+    }
+
+    private static void ComposeConclusion(IContainer container, List<AnalysisResultDto> results, int score, string url)
+    {
+        var text = BuildConclusionText(results, score, url);
+
         container.Border(1).BorderColor("#1A237E").Column(col =>
         {
             col.Item().Background("#1A237E").Padding(10)
@@ -861,16 +870,16 @@ public class PdfReportGenerator : IPdfReportGenerator
 
             col.Item().Padding(14).Column(inner =>
             {
-                inner.Item().Text(opening)
+                inner.Item().Text(text.Opening)
                     .FontSize(10).FontColor("#263238").LineHeight(1.5f);
 
-                inner.Item().PaddingTop(10).Text(legalNote)
+                inner.Item().PaddingTop(10).Text(text.LegalNote)
                     .FontSize(10).FontColor("#263238").LineHeight(1.5f);
 
                 inner.Item().PaddingTop(10).Text("What to do next")
                     .FontSize(10).Bold().FontColor("#1A237E");
 
-                inner.Item().PaddingTop(4).Text(nextSteps)
+                inner.Item().PaddingTop(4).Text(text.NextSteps)
                     .FontSize(10).FontColor("#263238").LineHeight(1.5f);
 
                 inner.Item().PaddingTop(10).Background("#F8F9FF").Padding(8).Row(row =>
