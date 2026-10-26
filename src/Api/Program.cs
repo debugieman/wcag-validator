@@ -73,6 +73,7 @@ builder.Services.AddOpenApi();
 
 // Stripe
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
+builder.Services.AddScoped<IStripeCheckoutSessionService, StripeCheckoutSessionService>();
 
 var app = builder.Build();
 
@@ -105,7 +106,7 @@ app.MapGet("/api/health", () => new
 });
 
 // Stripe checkout — creates a Checkout Session and returns the redirect URL
-app.MapPost("/api/checkout", async (CheckoutRequest req, IConfiguration config) =>
+app.MapPost("/api/checkout", async (CheckoutRequest req, IConfiguration config, IStripeCheckoutSessionService checkoutSessionService) =>
 {
     var baseUrl = config["App:BaseUrl"] ?? "http://localhost:4200";
     var productName = req.DeepScan
@@ -147,8 +148,7 @@ app.MapPost("/api/checkout", async (CheckoutRequest req, IConfiguration config) 
         CancelUrl  = $"{baseUrl}/#analyzer"
     };
 
-    var service = new SessionService();
-    var session = await service.CreateAsync(options);
+    var session = await checkoutSessionService.CreateAsync(options);
 
     return Results.Ok(new { url = session.Url });
 });
@@ -253,5 +253,16 @@ app.MapGet("/api/analysis/{id:guid}/report", async (Guid id, IMediator mediator,
 app.Run();
 
 public record CheckoutRequest(string Url, string Email, bool DeepScan);
+
+public interface IStripeCheckoutSessionService
+{
+    Task<Session> CreateAsync(SessionCreateOptions options, CancellationToken cancellationToken = default);
+}
+
+public class StripeCheckoutSessionService : IStripeCheckoutSessionService
+{
+    public Task<Session> CreateAsync(SessionCreateOptions options, CancellationToken cancellationToken = default) =>
+        new SessionService().CreateAsync(options, cancellationToken: cancellationToken);
+}
 
 public partial class Program { }
