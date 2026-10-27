@@ -44,7 +44,36 @@ services:
       - frontend
     restart: unless-stopped
 
+  # Daily SQLite backup, rotated to the last BACKUP_KEEP_COUNT (default 14)
+  # copies. Runs one backup immediately on startup, then on a cron schedule.
+  # Backups live in their own volume (db-backups) — still on the same host,
+  # so this protects against accidental deletion/corruption/bad migrations,
+  # but NOT against total disk/host failure. For that, sync db-backups
+  # off-site (e.g. rclone to object storage, or scp to another machine).
+  backup:
+    image: alpine:3.22
+    environment:
+      - BACKUP_KEEP_COUNT=${BACKUP_KEEP_COUNT:-14}
+    volumes:
+      - db-data:/app/data:ro
+      - db-backups:/backups
+      - ./scripts/backup-db.sh:/backup-db.sh:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        apk add --no-cache sqlite >/dev/null
+        /backup-db.sh
+        echo '0 3 * * * /backup-db.sh >> /proc/1/fd/1 2>&1' > /etc/crontabs/root
+        exec crond -f -l 2
+    restart: unless-stopped
+
 volumes:
   db-data:
+  db-backups:
   caddy-data:
   caddy-config:
