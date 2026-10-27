@@ -1,0 +1,7 @@
+wcag-analyzer.com {
+	reverse_proxy frontend:80
+}
+
+www.wcag-analyzer.com {
+	redir https://wcag-analyzer.com{uri} permanent
+}
