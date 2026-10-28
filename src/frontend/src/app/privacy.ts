@@ -24,7 +24,7 @@ import { RouterLink } from '@angular/router';
         <p>This website does not use tracking cookies or third-party analytics.</p>
 
         <h2>Contact</h2>
-        <p>For any privacy-related questions, contact us at <a href="mailto:hello@wcag-analyzer.com">hello@wcag-analyzer.com</a>.</p>
+        <p>For any privacy-related questions, contact us at <a href="mailto:debugieman@gmail.com">debugieman@gmail.com</a>.</p>
       </div>
     </div>
   `,
