@@ -240,7 +240,7 @@ interface CriterionGroup {
 
         <p class="success-note">
           Don't see the email? Check your spam folder or contact us at
-          <a href="mailto:hello@wcag-analyzer.com">hello@wcag-analyzer.com</a>.
+          <a href="mailto:debugieman@gmail.com">debugieman@gmail.com</a>.
         </p>
         <a class="success-btn" routerLink="/">Scan another website</a>
       </div>
