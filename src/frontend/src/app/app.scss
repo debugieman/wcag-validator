@@ -400,6 +400,21 @@ body {
   color: #999;
 }
 
+// ─── Unlimited/custom plan note ───────────────────────────────────────────────
+
+.unlimited-note {
+  font-size: 0.8rem;
+  color: #777;
+  text-align: center;
+  margin: 0;
+
+  a {
+    color: #4361ee;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+}
+
 // ─── No-refund checkbox ───────────────────────────────────────────────────────
 
 .terms-checkbox {
