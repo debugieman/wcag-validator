@@ -118,7 +118,6 @@ app.MapPost("/api/checkout", async (CheckoutRequest req, IConfiguration config, 
 
     var options = new SessionCreateOptions
     {
-        PaymentMethodTypes = ["card"],
         LineItems =
         [
             new SessionLineItemOptions
