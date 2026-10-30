@@ -137,6 +137,8 @@ app.MapPost("/api/checkout", async (CheckoutRequest req, IConfiguration config, 
         ],
         Mode = "payment",
         CustomerEmail = req.Email,
+        BillingAddressCollection = "required",
+        TaxIdCollection = new SessionTaxIdCollectionOptions { Enabled = true },
         Metadata = new Dictionary<string, string>
         {
             ["url"]      = req.Url,
