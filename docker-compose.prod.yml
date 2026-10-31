@@ -72,8 +72,40 @@ services:
         exec crond -f -l 2
     restart: unless-stopped
 
+  # Uptime check against the public /api/health endpoint (through Caddy, so it
+  # also catches TLS/routing failures, not just "is the backend process alive").
+  # Runs every 2 minutes; after HEALTH_FAIL_THRESHOLD consecutive failures (default
+  # 3, so ~6 min of real downtime) sends one alert email via Resend, then stays
+  # quiet until recovery, which sends one more email. State lives in its own
+  # volume so a container restart doesn't re-fire an alert for an already-known
+  # outage. Self-hosted on the same host as the app it's checking — it can't
+  # catch "the whole server is down". Pair with a free external checker
+  # (UptimeRobot/Healthchecks.io) once the domain is live for that case.
+  monitor:
+    image: alpine:3.22
+    environment:
+      - App__BaseUrl=${App__BaseUrl}
+      - Resend__ApiKey=${Resend__ApiKey}
+      - Alert__Email=${Alert__Email}
+      - HEALTH_FAIL_THRESHOLD=${HEALTH_FAIL_THRESHOLD:-3}
+    volumes:
+      - monitor-state:/state
+      - ./scripts/health-check.sh:/health-check.sh:ro
+    depends_on:
+      - caddy
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        apk add --no-cache curl >/dev/null
+        echo '*/2 * * * * /health-check.sh >> /proc/1/fd/1 2>&1' > /etc/crontabs/root
+        exec crond -f -l 2
+    restart: unless-stopped
+
 volumes:
   db-data:
   db-backups:
   caddy-data:
   caddy-config:
+  monitor-state:
