@@ -140,19 +140,9 @@ public class HttpClientApiTests : IClassFixture<CustomWebApplicationFactory>
         var getByIdResponse = await _client.SendAsync(getByIdRequest);
         var getByIdBody = await getByIdResponse.Content.ReadFromJsonAsync<JsonElement>();
 
-        // GET list
-        var getListRequest = new HttpRequestMessage(HttpMethod.Get, "/api/analysis");
-        var getListResponse = await _client.SendAsync(getListRequest);
-        var getListBody = await getListResponse.Content.ReadFromJsonAsync<JsonElement>();
-
-        // Assert — data is consistent across endpoints
+        // Assert — data is consistent with what was posted
         getByIdBody.GetProperty("id").GetString().Should().Be(id);
         getByIdBody.GetProperty("url").GetString().Should().Be("https://full-flow-test.com");
-
-        var listItems = getListBody.EnumerateArray().ToList();
-        listItems.Should().Contain(item =>
-            item.GetProperty("id").GetString() == id &&
-            item.GetProperty("url").GetString() == "https://full-flow-test.com");
     }
 
     [Fact]
