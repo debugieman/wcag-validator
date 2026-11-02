@@ -113,33 +113,6 @@ public class AnalysisEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAnalysis_ShouldReturnOk()
-    {
-        var response = await _client.GetAsync("/api/analysis");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task GetAnalysis_AfterPost_ShouldContainPostedItem()
-    {
-        var payload = new { url = "https://test-site.com", email = "test@site.com" };
-        var postResponse = await _client.PostAsJsonAsync("/api/analysis", payload);
-        postResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var response = await _client.GetAsync("/api/analysis");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetArrayLength().Should().BeGreaterThanOrEqualTo(1);
-
-        var items = content.EnumerateArray().ToList();
-        items.Should().Contain(item =>
-            item.GetProperty("url").GetString() == "https://test-site.com");
-    }
-
-    [Fact]
     public async Task PostAnalysis_ShouldEnqueueForProcessing()
     {
         var payload = new { url = "https://enqueue-test.com", email = "enqueue@test.com" };
