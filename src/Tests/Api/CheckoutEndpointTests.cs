@@ -126,4 +126,38 @@ public class CheckoutEndpointTests : IDisposable
 
         _capturedOptions!.Mode.Should().Be("payment");
     }
+
+    [Fact]
+    public async Task PostCheckout_ShouldNotHardcodePaymentMethodTypes()
+    {
+        // Regression guard: PaymentMethodTypes must stay unset so Stripe can offer dynamic
+        // payment methods configured from the Dashboard. See stripe-best-practices skill —
+        // hardcoding ["card"] was a real bug fixed in PR #127, this stops it silently
+        // creeping back in.
+        await _client.PostAsJsonAsync("/api/checkout",
+            new { url = "https://example.com", email = "user@example.com", deepScan = false });
+
+        _capturedOptions!.PaymentMethodTypes.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PostCheckout_ShouldCollectBillingAddressAndTaxId()
+    {
+        await _client.PostAsJsonAsync("/api/checkout",
+            new { url = "https://example.com", email = "user@example.com", deepScan = false });
+
+        _capturedOptions!.BillingAddressCollection.Should().Be("required");
+        _capturedOptions!.TaxIdCollection.Should().NotBeNull();
+        _capturedOptions!.TaxIdCollection!.Enabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PostCheckout_ShouldEnableInvoiceCreation()
+    {
+        await _client.PostAsJsonAsync("/api/checkout",
+            new { url = "https://example.com", email = "user@example.com", deepScan = false });
+
+        _capturedOptions!.InvoiceCreation.Should().NotBeNull();
+        _capturedOptions!.InvoiceCreation!.Enabled.Should().BeTrue();
+    }
 }
