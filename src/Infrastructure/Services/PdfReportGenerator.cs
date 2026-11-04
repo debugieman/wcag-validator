@@ -577,14 +577,6 @@ public class PdfReportGenerator : IPdfReportGenerator
 
             col.Item().PaddingTop(8);
 
-            if (pageResults.Count == 0)
-            {
-                col.Item().Background("#E8F5E9").Padding(10)
-                    .Text("No violations found on this page.")
-                    .FontSize(10).FontColor("#388E3C");
-                return;
-            }
-
             foreach (var (impact, label) in ImpactOrder)
             {
                 if (!grouped.TryGetValue(impact, out var items) || items.Count == 0)
